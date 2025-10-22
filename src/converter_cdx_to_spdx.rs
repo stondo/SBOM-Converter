@@ -9,6 +9,7 @@
 use crate::errors::ConverterError;
 use crate::models_cdx::{CdxComponent, CdxDependency, CdxVulnerability};
 use crate::models_spdx::{RelationshipType, SpdxElement, SpdxPackage, SpdxRelationship};
+use crate::progress::ProgressTracker;
 
 use log::{debug, info};
 use serde::Deserializer;
@@ -25,6 +26,7 @@ pub fn convert_cdx_to_spdx<R: Read>(
     reader: R,
     writer: &mut BufWriter<File>,
     temp_path: &Path,
+    progress: ProgressTracker,
 ) -> Result<(), ConverterError> {
     info!("Starting CDX -> SPDX conversion stream...");
     debug!("Using temp file: {}", temp_path.display());
@@ -70,6 +72,7 @@ pub fn convert_cdx_to_spdx<R: Read>(
         writer,
         temp_writer: &mut temp_writer,
         first_element: &mut first_element,
+        progress: progress.clone(),
     };
     deserializer
         .deserialize_any(visitor)
@@ -124,6 +127,7 @@ struct CdxVisitor<'a, W: Write> {
     writer: &'a mut BufWriter<W>,
     temp_writer: &'a mut BufWriter<File>,
     first_element: &'a mut bool,
+    progress: ProgressTracker,
 }
 
 impl<'de, 'a, W: Write> serde::de::Visitor<'de> for CdxVisitor<'a, W> {
@@ -144,6 +148,7 @@ impl<'de, 'a, W: Write> serde::de::Visitor<'de> for CdxVisitor<'a, W> {
                     let component_visitor = ComponentArrayVisitor {
                         writer: self.writer,
                         first_element: self.first_element,
+                        progress: self.progress.clone(),
                     };
                     map.next_value_seed(component_visitor)?;
                 }
@@ -151,6 +156,7 @@ impl<'de, 'a, W: Write> serde::de::Visitor<'de> for CdxVisitor<'a, W> {
                     // Stream dependencies array
                     let dep_visitor = DependencyArrayVisitor {
                         temp_writer: self.temp_writer,
+                        progress: self.progress.clone(),
                     };
                     map.next_value_seed(dep_visitor)?;
                 }
@@ -160,6 +166,7 @@ impl<'de, 'a, W: Write> serde::de::Visitor<'de> for CdxVisitor<'a, W> {
                         writer: self.writer,
                         temp_writer: self.temp_writer,
                         first_element: self.first_element,
+                        progress: self.progress.clone(),
                     };
                     map.next_value_seed(vuln_visitor)?;
                 }
@@ -178,6 +185,7 @@ impl<'de, 'a, W: Write> serde::de::Visitor<'de> for CdxVisitor<'a, W> {
 struct ComponentArrayVisitor<'a, W: Write> {
     writer: &'a mut BufWriter<W>,
     first_element: &'a mut bool,
+    progress: ProgressTracker,
 }
 
 impl<'de, 'a, W: Write> serde::de::DeserializeSeed<'de> for ComponentArrayVisitor<'a, W> {
@@ -207,6 +215,7 @@ impl<'de, 'a, W: Write> serde::de::Visitor<'de> for ComponentArrayVisitor<'a, W>
         while let Some(component) = seq.next_element::<CdxComponent>()? {
             handle_cdx_component(component, self.writer, self.first_element)
                 .map_err(Error::custom)?;
+            self.progress.increment_element();
         }
         Ok(())
     }
@@ -215,6 +224,7 @@ impl<'de, 'a, W: Write> serde::de::Visitor<'de> for ComponentArrayVisitor<'a, W>
 /// Visitor for the dependencies array
 struct DependencyArrayVisitor<'a> {
     temp_writer: &'a mut BufWriter<File>,
+    progress: ProgressTracker,
 }
 
 impl<'de, 'a> serde::de::DeserializeSeed<'de> for DependencyArrayVisitor<'a> {
@@ -243,6 +253,7 @@ impl<'de, 'a> serde::de::Visitor<'de> for DependencyArrayVisitor<'a> {
 
         while let Some(dep) = seq.next_element::<CdxDependency>()? {
             handle_cdx_dependency(dep, self.temp_writer).map_err(Error::custom)?;
+            self.progress.increment_relationship();
         }
         Ok(())
     }
@@ -253,6 +264,7 @@ struct VulnerabilityArrayVisitor<'a, W: Write> {
     writer: &'a mut BufWriter<W>,
     temp_writer: &'a mut BufWriter<File>,
     first_element: &'a mut bool,
+    progress: ProgressTracker,
 }
 
 impl<'de, 'a, W: Write> serde::de::DeserializeSeed<'de> for VulnerabilityArrayVisitor<'a, W> {
@@ -282,6 +294,7 @@ impl<'de, 'a, W: Write> serde::de::Visitor<'de> for VulnerabilityArrayVisitor<'a
         while let Some(vuln) = seq.next_element::<CdxVulnerability>()? {
             handle_cdx_vulnerability(vuln, self.writer, self.temp_writer, self.first_element)
                 .map_err(Error::custom)?;
+            self.progress.increment_element();
         }
         Ok(())
     }

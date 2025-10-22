@@ -9,6 +9,7 @@ pub mod converter_spdx_to_cdx;
 pub mod errors;
 pub mod models_cdx;
 pub mod models_spdx;
+pub mod progress;
 pub mod schema;
 
 use clap::ValueEnum;
@@ -91,6 +92,9 @@ pub fn run(config: Config) -> Result<(), ConverterError> {
     info!("Starting streaming conversion process...");
     let conversion_start = Instant::now();
 
+    // Create progress tracker (reports every 1000 elements)
+    let progress = progress::ProgressTracker::new(1000);
+
     match config.direction {
         ConversionDirection::CdxToSpdx => {
             // Use Strategy 1: "Temp File" Method
@@ -103,6 +107,7 @@ pub fn run(config: Config) -> Result<(), ConverterError> {
                 input_reader,
                 &mut output_writer,
                 &temp_file_path,
+                progress.clone(),
             )?;
 
             // Clean up temp file
@@ -117,9 +122,12 @@ pub fn run(config: Config) -> Result<(), ConverterError> {
                 input_reader,
                 output_writer,
                 &config.input_file,
+                progress.clone(),
             )?;
         }
     }
+
+    progress.finish();
 
     info!(
         "Streaming conversion finished. (Took {:.2?})",

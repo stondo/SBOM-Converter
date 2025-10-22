@@ -3,6 +3,7 @@
 A high-performance, memory-efficient Rust tool for bidirectional conversion between **SPDX 3.0.1** and **CycloneDX 1.6** SBOM formats. Designed to handle extremely large SBOM files (tested with 2.9GB+ files) using streaming architecture with constant memory footprint.
 
 **Supported Formats:**
+
 - **SPDX:** Version 3.0.1 (JSON only)
 - **CycloneDX:** Version 1.6 (JSON only)
 
@@ -14,18 +15,23 @@ A high-performance, memory-efficient Rust tool for bidirectional conversion betw
 - ✅ **Schema Validation**: Optional JSON schema validation against official SPDX/CDX schemas
 - 🛡️ **Robust Error Handling**: Comprehensive error messages and validation
 - 📊 **Verbose Logging**: Optional detailed output for debugging and monitoring
+- 📈 **Progress Tracking**: Real-time progress indicators for large file conversions (reports every 1000 elements)
 
 ## Architecture
 
 ### CDX → SPDX Conversion
+
 Uses a **single-pass streaming with temp file** approach:
+
 1. Stream through CDX file once
 2. Write SPDX elements to main output file
 3. Write relationships to temporary file
 4. Merge temp file relationships into final output
 
 ### SPDX → CDX Conversion
+
 Uses a **two-pass indexing** approach:
+
 1. **Pass 1**: Build relationship index (HashMap of package dependencies)
 2. **Pass 2**: Re-stream file and convert elements using the index
 
@@ -34,6 +40,7 @@ Both methods maintain **O(1) memory complexity** relative to file size using Ser
 ## Installation
 
 ### Prerequisites
+
 - Rust 1.85+ (2024 edition)
 - Cargo
 
@@ -113,16 +120,19 @@ Schemas are automatically loaded when the `--validate` flag is used.
 ## Performance Characteristics
 
 ### Memory Usage
+
 - **Constant O(1) memory** relative to file size for element streaming
 - **O(n) memory** only for relationship indexing in SPDX→CDX conversion
   - Where n = number of relationships (typically much smaller than file size)
 
 ### Processing Speed
+
 - Tested with **2.9GB SBOM files**
 - Streaming prevents memory overflow on large files
 - Release build recommended for optimal performance
 
 ### Benchmarks (Example Hardware)
+
 ```
 File Size: 2.9GB
 Conversion: SPDX → CDX
@@ -171,6 +181,7 @@ sbom-converter/
 ## Dependencies
 
 Major dependencies:
+
 - **serde** / **serde_json** - JSON serialization/deserialization with streaming
 - **clap** - Command-line argument parsing
 - **jsonschema** - JSON schema validation
@@ -220,15 +231,18 @@ cargo clippy
 ## Troubleshooting
 
 ### Out of Memory Errors
+
 - Ensure you're using the release build: `cargo build --release`
 - For SPDX→CDX with extremely large relationship counts, increase system swap space
 
 ### JSON Parse Errors
+
 - Validate input file is valid JSON: `jq . < input.json`
 - Check for trailing commas or syntax errors
 - Ensure file encoding is UTF-8
 
 ### Schema Validation Failures
+
 - Verify schema files are in `schemas/` directory
 - Check schema file names match expected patterns
 - Try running without `--validate` flag to isolate conversion issues
@@ -244,11 +258,12 @@ cargo clippy
 ## Contributing
 
 Contributions are welcome! Areas for improvement:
+
 - Additional SBOM format support (SWID, etc.)
 - Enhanced relationship mapping
 - Parallel processing for multi-core systems
-- Progress indicators for large files
-- Support for compressed input files
+- Support for compressed input files (gzip, bzip2, xz)
+- Support for SPDX 2.x and earlier CycloneDX versions
 
 ## License
 

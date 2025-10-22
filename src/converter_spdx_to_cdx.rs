@@ -7,6 +7,7 @@
 use crate::errors::ConverterError;
 use crate::models_cdx as cdx;
 use crate::models_spdx as spdx;
+use crate::progress::ProgressTracker;
 use log::{info, warn};
 use serde::Deserializer;
 use std::collections::HashMap;
@@ -23,13 +24,14 @@ pub fn convert_spdx_to_cdx<R: Read, W: Write>(
     input_reader: BufReader<R>,
     mut output_writer: BufWriter<W>,
     input_path: &Path,
+    progress: ProgressTracker,
 ) -> Result<(), ConverterError> {
     // --- PASS 1: Build Index ---
     info!("[PASS 1/2] Building relationship index...");
     let start_pass_1 = std::time::Instant::now();
 
     // We must consume the input_reader to build the index.
-    let index = pass_1_build_index(input_reader)?;
+    let index = pass_1_build_index(input_reader, progress.clone())?;
 
     info!(
         "[PASS 1/2] Index complete. Found relationships for {} elements. (Took {:.2?})",
@@ -46,7 +48,7 @@ pub fn convert_spdx_to_cdx<R: Read, W: Write>(
         .map_err(|e| ConverterError::Io(e, "Failed to re-open input for Pass 2".to_string()))?;
     let input_reader_pass_2 = BufReader::new(input_file_pass_2);
 
-    pass_2_convert_and_write(input_reader_pass_2, &mut output_writer, &index)?;
+    pass_2_convert_and_write(input_reader_pass_2, &mut output_writer, &index, progress)?;
 
     info!(
         "[PASS 2/2] Conversion pass complete. (Took {:.2?})",
@@ -59,9 +61,13 @@ pub fn convert_spdx_to_cdx<R: Read, W: Write>(
 /// Pass 1: Streams the input file and builds the relationship index.
 fn pass_1_build_index<R: Read>(
     input_reader: BufReader<R>,
+    progress: ProgressTracker,
 ) -> Result<SpdxRelationshipIndex, ConverterError> {
     let mut index: SpdxRelationshipIndex = HashMap::new();
-    let visitor = spdx::SpdxPass1Visitor { index: &mut index };
+    let visitor = spdx::SpdxPass1Visitor {
+        index: &mut index,
+        progress: progress.clone(),
+    };
     let mut deserializer = serde_json::Deserializer::from_reader(input_reader);
 
     // Drive the streaming visitor
@@ -75,6 +81,7 @@ fn pass_2_convert_and_write<R: Read, W: Write>(
     input_reader: BufReader<R>,
     writer: &mut BufWriter<W>,
     index: &SpdxRelationshipIndex,
+    progress: ProgressTracker,
 ) -> Result<(), ConverterError> {
     // --- Write CDX Header ---
     let serial_number = format!("urn:uuid:{}", Uuid::new_v4());
@@ -95,6 +102,7 @@ fn pass_2_convert_and_write<R: Read, W: Write>(
         index,
         first_component,
         first_vulnerability,
+        progress: progress.clone(),
     };
 
     let mut deserializer = serde_json::Deserializer::from_reader(input_reader);

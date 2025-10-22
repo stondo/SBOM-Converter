@@ -156,6 +156,7 @@ pub struct SpdxRelationship {
 /// Custom visitor for Pass 1 (Indexing Pass)
 pub struct SpdxPass1Visitor<'a> {
     pub index: &'a mut crate::converter_spdx_to_cdx::SpdxRelationshipIndex,
+    pub progress: crate::progress::ProgressTracker,
 }
 
 impl<'de, 'a> Visitor<'de> for SpdxPass1Visitor<'a> {
@@ -173,7 +174,10 @@ impl<'de, 'a> Visitor<'de> for SpdxPass1Visitor<'a> {
             match key.as_str() {
                 "relationships" => {
                     // Found relationships, stream the array
-                    map.next_value_seed(SpdxRelationshipStreamVisitor { index: self.index })?;
+                    map.next_value_seed(SpdxRelationshipStreamVisitor {
+                        index: self.index,
+                        progress: self.progress.clone(),
+                    })?;
                 }
                 _ => {
                     // Skip all other keys
@@ -188,6 +192,7 @@ impl<'de, 'a> Visitor<'de> for SpdxPass1Visitor<'a> {
 /// Visitor for the 'relationships' array in Pass 1
 struct SpdxRelationshipStreamVisitor<'a> {
     index: &'a mut crate::converter_spdx_to_cdx::SpdxRelationshipIndex,
+    progress: crate::progress::ProgressTracker,
 }
 
 impl<'de, 'a> de::DeserializeSeed<'de> for SpdxRelationshipStreamVisitor<'a> {
@@ -218,6 +223,7 @@ impl<'de, 'a> Visitor<'de> for SpdxRelationshipStreamVisitor<'a> {
                 .entry(rel.spdx_element_id.clone())
                 .or_default()
                 .push(rel);
+            self.progress.increment_relationship();
         }
         Ok(())
     }
@@ -229,6 +235,7 @@ pub struct SpdxPass2Visitor<'a, W: std::io::Write> {
     pub index: &'a crate::converter_spdx_to_cdx::SpdxRelationshipIndex,
     pub first_component: bool,
     pub first_vulnerability: bool,
+    pub progress: crate::progress::ProgressTracker,
 }
 
 impl<'de, 'a, W: std::io::Write> Visitor<'de> for SpdxPass2Visitor<'a, W> {
@@ -297,6 +304,7 @@ impl<'de, 'a, 'b, W: std::io::Write> Visitor<'de> for SpdxElementStreamVisitor<'
                 &mut self.state.first_vulnerability,
             )
             .map_err(de::Error::custom)?;
+            self.state.progress.increment_element();
         }
         Ok(())
     }
