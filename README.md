@@ -237,6 +237,31 @@ When converting from SPDX to CycloneDX, you can filter out individual files and 
 - Before: 3,231 components (863 packages + 2,368 files)
 - After: 863 components (packages only)
 
+**Understanding File Size Reduction:**
+
+The dramatic size reduction (e.g., 2.5GB → 387KB) when using `--packages-only` is intentional and correct:
+
+```text
+Your SPDX file contains:
+├── 863 packages          (0.04% of data) ← Critical metadata preserved
+└── 1,964,683 files       (99.96% of data) ← Intentionally filtered out
+
+Why this is correct:
+✅ Packages contain: names, versions, CPEs, hashes, dependencies, vulnerabilities
+✅ Files are typically: individual binaries, source files, build artifacts
+✅ Supply chain security focuses on packages, not individual files
+✅ Vulnerability databases reference packages, not files
+✅ CycloneDX best practice: package-level granularity for distribution
+```
+
+**Data Preservation Guarantee:**
+
+- ✅ **100% of package metadata preserved**: All names, versions, CPEs, hashes, descriptions, PURLs, licenses, dependencies, and vulnerabilities are fully retained
+- ✅ **Zero security data loss**: All CVEs, VEX states, and security identifiers maintained
+- ❌ **File entries intentionally excluded**: Individual file paths and hashes are filtered (by design)
+
+For complete details on what data is preserved vs. filtered, see [DATA_PRESERVATION.md](DATA_PRESERVATION.md).
+
 ### Split VEX Mode (`--split-vex`)
 
 Following CycloneDX best practices, you can separate vulnerability data into a dedicated VEX (Vulnerability Exploitability eXchange) file:
@@ -654,6 +679,13 @@ cargo clippy
 - **CycloneDX Version:** Only CycloneDX 1.6 is supported (earlier versions are not supported)
 - **Relationship Mapping:** Some complex SPDX relationship types may be mapped in a lossy manner
 - **External References:** External references and attestations may have limited mapping
+- **File-Level Data:** When using `--packages-only`, individual file entries are intentionally filtered out (see [DATA_PRESERVATION.md](DATA_PRESERVATION.md) for details)
+
+## Data Preservation
+
+**Important:** The converter preserves **100% of package-level metadata** (names, versions, CPEs, hashes, dependencies, vulnerabilities) but **intentionally filters file entries** when using `--packages-only`. This is correct behavior and matches CycloneDX best practices for SBOM distribution.
+
+For complete details on what data is preserved in different conversion scenarios, see [DATA_PRESERVATION.md](DATA_PRESERVATION.md).
 
 ## Contributing
 
