@@ -3,8 +3,8 @@
 //! We only define the fields we actually need for the conversion,
 //! allowing `serde` to efficiently skip all other fields.
 
-use serde::{Deserialize, Serialize};
 use serde::de::{self, IgnoredAny, MapAccess, Visitor};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::fs::File;
@@ -153,7 +153,9 @@ pub struct CdxComponentStreamVisitor<'a, 'b, W: std::io::Write> {
     state: &'b mut CdxStreamingVisitor<'a, W>,
 }
 
-impl<'de, 'a, 'b, W: std::io::Write> de::DeserializeSeed<'de> for CdxComponentStreamVisitor<'a, 'b, W> {
+impl<'de, 'a, 'b, W: std::io::Write> de::DeserializeSeed<'de>
+    for CdxComponentStreamVisitor<'a, 'b, W>
+{
     type Value = ();
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -193,7 +195,9 @@ pub struct CdxVulnerabilityStreamVisitor<'a, 'b, W: std::io::Write> {
     state: &'b mut CdxStreamingVisitor<'a, W>,
 }
 
-impl<'de, 'a, 'b, W: std::io::Write> de::DeserializeSeed<'de> for CdxVulnerabilityStreamVisitor<'a, 'b, W> {
+impl<'de, 'a, 'b, W: std::io::Write> de::DeserializeSeed<'de>
+    for CdxVulnerabilityStreamVisitor<'a, 'b, W>
+{
     type Value = ();
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -204,9 +208,7 @@ impl<'de, 'a, 'b, W: std::io::Write> de::DeserializeSeed<'de> for CdxVulnerabili
     }
 }
 
-impl<'de, 'a, 'b, W: std::io::Write> Visitor<'de>
-    for CdxVulnerabilityStreamVisitor<'a, 'b, W>
-{
+impl<'de, 'a, 'b, W: std::io::Write> Visitor<'de> for CdxVulnerabilityStreamVisitor<'a, 'b, W> {
     type Value = ();
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -236,7 +238,9 @@ pub struct CdxDependencyStreamVisitor<'a, 'b, W: std::io::Write> {
     state: &'b mut CdxStreamingVisitor<'a, W>,
 }
 
-impl<'de, 'a, 'b, W: std::io::Write> de::DeserializeSeed<'de> for CdxDependencyStreamVisitor<'a, 'b, W> {
+impl<'de, 'a, 'b, W: std::io::Write> de::DeserializeSeed<'de>
+    for CdxDependencyStreamVisitor<'a, 'b, W>
+{
     type Value = ();
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -260,13 +264,9 @@ impl<'de, 'a, 'b, W: std::io::Write> Visitor<'de> for CdxDependencyStreamVisitor
     {
         while let Some(dep) = seq.next_element::<CdxDependency>()? {
             // This is where we call the conversion logic
-            crate::converter_cdx_to_spdx::handle_cdx_dependency(
-                dep,
-                self.state.temp_writer,
-            )
-            .map_err(de::Error::custom)?;
+            crate::converter_cdx_to_spdx::handle_cdx_dependency(dep, self.state.temp_writer)
+                .map_err(de::Error::custom)?;
         }
         Ok(())
     }
 }
-

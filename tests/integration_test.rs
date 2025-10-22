@@ -129,9 +129,8 @@ fn test_cdx_to_spdx_streaming() {
         .arg("cdx-to-spdx");
 
     // 3. Assert it runs successfully
-    cmd.assert()
-        .success();
-        // Note: log messages go to stderr, not stdout
+    cmd.assert().success();
+    // Note: log messages go to stderr, not stdout
 
     // 4. Validate the output file
     let output_content = fs::read_to_string(output_path).unwrap();
@@ -140,12 +139,21 @@ fn test_cdx_to_spdx_streaming() {
     // Check that elements were created
     let elements = output_json["elements"].as_array().unwrap();
     assert_eq!(elements.len(), 3); // pkg-a, pkg-b, vuln
-    
+
     // Find elements by spdxId (order may vary)
-    let pkg_a = elements.iter().find(|e| e["spdxId"] == "SPDXRef-pkg-a").unwrap();
-    let pkg_b = elements.iter().find(|e| e["spdxId"] == "SPDXRef-pkg-b").unwrap();
-    let vuln = elements.iter().find(|e| e["type"] == "SpdxVulnerability").unwrap();
-    
+    let pkg_a = elements
+        .iter()
+        .find(|e| e["spdxId"] == "SPDXRef-pkg-a")
+        .unwrap();
+    let pkg_b = elements
+        .iter()
+        .find(|e| e["spdxId"] == "SPDXRef-pkg-b")
+        .unwrap();
+    let vuln = elements
+        .iter()
+        .find(|e| e["type"] == "SpdxVulnerability")
+        .unwrap();
+
     assert_eq!(pkg_a["name"], "Package A");
     assert_eq!(pkg_a["licenseConcluded"], "MIT");
     assert_eq!(pkg_b["name"], "Package B");
@@ -154,15 +162,24 @@ fn test_cdx_to_spdx_streaming() {
     // Check that relationships were created (from temp file)
     let relationships = output_json["relationships"].as_array().unwrap();
     assert_eq!(relationships.len(), 2); // 1 dependency, 1 affects
-    
+
     // Find relationships by type (order may vary)
-    let dep_rel = relationships.iter().find(|r| r["relationshipType"] == "DEPENDS_ON").unwrap();
-    let affect_rel = relationships.iter().find(|r| r["relationshipType"] == "AFFECTS").unwrap();
-    
+    let dep_rel = relationships
+        .iter()
+        .find(|r| r["relationshipType"] == "DEPENDS_ON")
+        .unwrap();
+    let affect_rel = relationships
+        .iter()
+        .find(|r| r["relationshipType"] == "AFFECTS")
+        .unwrap();
+
     assert_eq!(dep_rel["spdxElementId"], "SPDXRef-pkg-a");
     assert_eq!(dep_rel["relatedSpdxElement"], "SPDXRef-pkg-b");
     // The vulnerability affects the package, not the other way around
-    assert_eq!(affect_rel["spdxElementId"], "SPDXRef-Vulnerability-CVE-2025-1234");
+    assert_eq!(
+        affect_rel["spdxElementId"],
+        "SPDXRef-Vulnerability-CVE-2025-1234"
+    );
     assert_eq!(affect_rel["relatedSpdxElement"], "SPDXRef-pkg-b");
 }
 
@@ -187,9 +204,8 @@ fn test_spdx_to_cdx_streaming() {
         .arg("spdx-to-cdx");
 
     // 3. Assert it runs successfully
-    cmd.assert()
-        .success();
-        // Note: log messages go to stderr, not stdout
+    cmd.assert().success();
+    // Note: log messages go to stderr, not stdout
 
     // 4. Validate the output file
     let output_content = fs::read_to_string(output_path).unwrap();
@@ -238,8 +254,7 @@ fn test_validation_flag_cdx() {
         .arg("--verbose"); // To check log output
 
     // It should fail validation before trying to convert
-    cmd.assert()
-        .failure();
+    cmd.assert().failure();
 }
 
 #[test]
@@ -252,6 +267,5 @@ fn test_file_not_found() {
         .arg("--direction")
         .arg("cdx-to-spdx");
 
-    cmd.assert()
-        .failure();
+    cmd.assert().failure();
 }

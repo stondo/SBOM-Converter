@@ -111,7 +111,8 @@ fn pass_2_convert_and_write<R: Read, W: Write>(
         for rel in relationships {
             if rel.relationship_type == "DEPENDS_ON" {
                 // Map SPDX ID to bom-ref (strip SPDXRef- prefix if present)
-                let bom_ref = rel.related_spdx_element
+                let bom_ref = rel
+                    .related_spdx_element
                     .strip_prefix("SPDXRef-")
                     .unwrap_or(&rel.related_spdx_element)
                     .to_string();
@@ -159,7 +160,8 @@ pub fn handle_spdx_element<W: Write>(
     match element.element_type.as_str() {
         "SpdxPackage" | "SpdxFile" => {
             // Map SPDX ID to bom-ref
-            let bom_ref = element.spdx_id
+            let bom_ref = element
+                .spdx_id
                 .strip_prefix("SPDXRef-")
                 .unwrap_or(&element.spdx_id)
                 .to_string();

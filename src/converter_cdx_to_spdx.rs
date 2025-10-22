@@ -40,12 +40,24 @@ pub fn convert_cdx_to_spdx<R: Read>(
     writer.write_all(b"  \"dataLicense\": \"CC0-1.0\",\n")?;
     writer.write_all(b"  \"spdxId\": \"SPDXRef-DOCUMENT\",\n")?;
     writer.write_all(b"  \"name\": \"Converted SBOM\",\n")?;
-    writer.write_all(format!("  \"documentNamespace\": \"urn:uuid:{}\",\n", uuid::Uuid::new_v4()).as_bytes())?;
+    writer.write_all(
+        format!(
+            "  \"documentNamespace\": \"urn:uuid:{}\",\n",
+            uuid::Uuid::new_v4()
+        )
+        .as_bytes(),
+    )?;
     writer.write_all(b"  \"creationInfo\": {\n")?;
-    writer.write_all(format!("    \"created\": \"{}\",\n", chrono::Utc::now().to_rfc3339()).as_bytes())?;
+    writer.write_all(
+        format!(
+            "    \"created\": \"{}\",\n",
+            chrono::Utc::now().to_rfc3339()
+        )
+        .as_bytes(),
+    )?;
     writer.write_all(b"    \"creators\": [\"Tool: sbom-converter\"]\n")?;
     writer.write_all(b"  },\n")?;
-    
+
     // 3. Start elements array
     writer.write_all(b"  \"elements\": [\n")?;
     let mut first_element = true;
@@ -191,7 +203,7 @@ impl<'de, 'a, W: Write> serde::de::Visitor<'de> for ComponentArrayVisitor<'a, W>
         A: serde::de::SeqAccess<'de>,
     {
         use serde::de::Error;
-        
+
         while let Some(component) = seq.next_element::<CdxComponent>()? {
             handle_cdx_component(component, self.writer, self.first_element)
                 .map_err(Error::custom)?;
@@ -228,10 +240,9 @@ impl<'de, 'a> serde::de::Visitor<'de> for DependencyArrayVisitor<'a> {
         A: serde::de::SeqAccess<'de>,
     {
         use serde::de::Error;
-        
+
         while let Some(dep) = seq.next_element::<CdxDependency>()? {
-            handle_cdx_dependency(dep, self.temp_writer)
-                .map_err(Error::custom)?;
+            handle_cdx_dependency(dep, self.temp_writer).map_err(Error::custom)?;
         }
         Ok(())
     }
@@ -267,7 +278,7 @@ impl<'de, 'a, W: Write> serde::de::Visitor<'de> for VulnerabilityArrayVisitor<'a
         A: serde::de::SeqAccess<'de>,
     {
         use serde::de::Error;
-        
+
         while let Some(vuln) = seq.next_element::<CdxVulnerability>()? {
             handle_cdx_vulnerability(vuln, self.writer, self.temp_writer, self.first_element)
                 .map_err(Error::custom)?;
@@ -287,7 +298,7 @@ pub fn handle_cdx_component<W: Write>(
     first_element: &mut bool,
 ) -> Result<(), std::io::Error> {
     let spdx_pkg = SpdxPackage::from_cdx_component(&component);
-    
+
     if !*first_element {
         writer.write_all(b",\n")?;
     }
@@ -338,7 +349,7 @@ pub fn handle_cdx_vulnerability<W: Write>(
         writer.write_all(b",\n")?;
     }
     *first_element = false;
-    
+
     writer.write_all(b"    ")?;
     serde_json::to_writer(&mut *writer, &element)?;
 

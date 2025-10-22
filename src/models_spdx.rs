@@ -263,7 +263,9 @@ pub struct SpdxElementStreamVisitor<'a, 'b, W: std::io::Write> {
     state: &'b mut SpdxPass2Visitor<'a, W>,
 }
 
-impl<'de, 'a, 'b, W: std::io::Write> de::DeserializeSeed<'de> for SpdxElementStreamVisitor<'a, 'b, W> {
+impl<'de, 'a, 'b, W: std::io::Write> de::DeserializeSeed<'de>
+    for SpdxElementStreamVisitor<'a, 'b, W>
+{
     type Value = ();
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -299,4 +301,3 @@ impl<'de, 'a, 'b, W: std::io::Write> Visitor<'de> for SpdxElementStreamVisitor<'
         Ok(())
     }
 }
-

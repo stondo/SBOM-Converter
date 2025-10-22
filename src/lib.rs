@@ -96,10 +96,15 @@ pub fn run(config: Config) -> Result<(), ConverterError> {
             // Use Strategy 1: "Temp File" Method
             // Create a temp file for relationships
             let temp_dir = std::env::temp_dir();
-            let temp_file_path = temp_dir.join(format!("sbom-converter-temp-{}.json", uuid::Uuid::new_v4()));
-            
-            converter_cdx_to_spdx::convert_cdx_to_spdx(input_reader, &mut output_writer, &temp_file_path)?;
-            
+            let temp_file_path =
+                temp_dir.join(format!("sbom-converter-temp-{}.json", uuid::Uuid::new_v4()));
+
+            converter_cdx_to_spdx::convert_cdx_to_spdx(
+                input_reader,
+                &mut output_writer,
+                &temp_file_path,
+            )?;
+
             // Clean up temp file
             if temp_file_path.exists() {
                 let _ = std::fs::remove_file(&temp_file_path);

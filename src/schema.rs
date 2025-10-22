@@ -14,8 +14,8 @@ use std::path::Path;
 pub fn validate_json_schema(schema_str: &str, json_file_path: &Path) -> Result<(), ConverterError> {
     info!("Loading schema...");
     let schema_json: Value = serde_json::from_str(schema_str).map_err(ConverterError::Serde)?;
-    let compiled_schema =
-        jsonschema::validator_for(&schema_json).map_err(|e| ConverterError::Validation(e.to_string()))?;
+    let compiled_schema = jsonschema::validator_for(&schema_json)
+        .map_err(|e| ConverterError::Validation(e.to_string()))?;
 
     info!("Loading and parsing input file for validation...");
     let file = File::open(json_file_path)
@@ -24,7 +24,7 @@ pub fn validate_json_schema(schema_str: &str, json_file_path: &Path) -> Result<(
     let instance: Value = serde_json::from_reader(reader).map_err(ConverterError::Serde)?;
 
     info!("Validating instance against schema...");
-    
+
     if compiled_schema.is_valid(&instance) {
         info!("Validation successful!");
         Ok(())
