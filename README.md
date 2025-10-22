@@ -1,6 +1,10 @@
 # SBOM Converter
 
-A high-performance, memory-efficient Rust tool for bidirectional conversion between **SPDX** and **CycloneDX** SBOM formats. Designed to handle extremely large SBOM files (tested with 2.9GB+ files) using streaming architecture with constant memory footprint.
+A high-performance, memory-efficient Rust tool for bidirectional conversion between **SPDX 3.0.1** and **CycloneDX 1.6** SBOM formats. Designed to handle extremely large SBOM files (tested with 2.9GB+ files) using streaming architecture with constant memory footprint.
+
+**Supported Formats:**
+- **SPDX:** Version 3.0.1 (JSON only)
+- **CycloneDX:** Version 1.6 (JSON only)
 
 ## Features
 
@@ -231,10 +235,11 @@ cargo clippy
 
 ## Limitations
 
-- Currently supports JSON format only (no XML/YAML)
-- SPDX 3.0.1 and CycloneDX 1.6 schemas
-- Relationship mapping may be lossy for complex SPDX relationship types
-- External references and attestations may have limited mapping
+- **Format Support:** Only JSON format is currently supported (XML and YAML are not supported)
+- **SPDX Version:** Only SPDX 3.0.1 is supported (SPDX 2.x is not supported)
+- **CycloneDX Version:** Only CycloneDX 1.6 is supported (earlier versions are not supported)
+- **Relationship Mapping:** Some complex SPDX relationship types may be mapped in a lossy manner
+- **External References:** External references and attestations may have limited mapping
 
 ## Contributing
 
