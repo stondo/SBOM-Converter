@@ -45,6 +45,7 @@ Uses a **three-pass indexing** approach for comprehensive data extraction:
 3. **Pass 3**: Extract vulnerabilities and VEX assessments with URN-based affects references
 
 **Enhanced Data Extraction:**
+
 - CPE identifiers from `externalIdentifier` fields
 - SHA-256/SHA-1 hashes from `verifiedUsing` fields
 - Component descriptions and scopes
@@ -134,6 +135,7 @@ Separate vulnerabilities into a dedicated VEX file following CycloneDX best prac
 ```
 
 This produces two files:
+
 - `bom.json` - Components and dependencies (no vulnerabilities)
 - `sbom-spdx.vex.json` - Vulnerabilities with URN references to components
 
@@ -228,12 +230,14 @@ When converting from SPDX to CycloneDX, you can filter out individual files and 
 ```
 
 **Benefits:**
+
 - Reduces output size significantly (e.g., 881KB → 325KB)
 - Focuses on meaningful software components (packages/libraries)
 - Excludes individual files which are often not relevant for dependency analysis
 - Ideal for supply chain security analysis and vulnerability management
 
 **Example Impact:**
+
 - Before: 3,231 components (863 packages + 2,368 files)
 - After: 863 components (packages only)
 
@@ -275,10 +279,12 @@ Following CycloneDX best practices, you can separate vulnerability data into a d
 ```
 
 **Output Files:**
+
 1. `bom.json` - Main SBOM with components and dependencies (no vulnerabilities)
 2. `{input-name}.vex.json` - Separate VEX file with all vulnerability data
 
 **Benefits:**
+
 - Follows CycloneDX VEX specification for large vulnerability datasets
 - Main BOM stays focused on component inventory
 - VEX file can be updated independently as new vulnerabilities are discovered
@@ -286,13 +292,15 @@ Following CycloneDX best practices, you can separate vulnerability data into a d
 - Supports dynamic vulnerability scanning workflows
 
 **VEX File Structure:**
+
 - Full CycloneDX 1.6 document with `bomFormat`, `specVersion`, `serialNumber`, `version`
 - Metadata with tool information
 - Vulnerabilities array with URN references to components in main BOM
 - URN format: `urn:uuid:{main-bom-serial-number}#{component-bom-ref}`
 
 **Example URN Reference:**
-```
+
+```json
 "affects": [{
   "ref": "urn:uuid:b5ac6773-5bc6-477e-a55d-77b45835e867#busybox-b1ef70881579a83f"
 }]
@@ -312,10 +320,12 @@ Both flags work together for optimal results:
 ```
 
 **Result:**
+
 - `bom.json` (325KB): 863 packages with metadata, 361 dependencies, 0 vulnerabilities
 - `yocto-build.vex.json` (62KB): 57 vulnerabilities with URN references
 
 This combination provides:
+
 - Clean, focused component inventory
 - Separate vulnerability tracking
 - Smaller file sizes for easier distribution
@@ -398,7 +408,6 @@ The converter preserves metadata bidirectionally with **full round-trip fidelity
 }
 ```
 
-
 #### SPDX → CycloneDX
 
 The reverse conversion preserves all fields, ensuring **lossless round-trip** transformation.
@@ -432,6 +441,7 @@ The reverse conversion preserves all fields, ensuring **lossless round-trip** tr
 When converting from SPDX 3.0.1 (especially JSON-LD format) to CycloneDX 1.6, the converter captures comprehensive metadata:
 
 ### Component Metadata
+
 - **CPE Identifiers**: Extracted from `externalIdentifier` fields for security scanning
 - **Hash Values**: SHA-256 and SHA-1 hashes from `verifiedUsing` fields for integrity verification
 - **Descriptions**: Component summaries for documentation
@@ -439,12 +449,14 @@ When converting from SPDX 3.0.1 (especially JSON-LD format) to CycloneDX 1.6, th
 - **PURLs**: Package URLs preserved from SPDX for package identification
 
 ### Vulnerability & VEX Data
+
 - **CVE Identifiers**: Extracted from vulnerability objects or SPDX IDs
 - **VEX Analysis**: Assessment states (resolved, not_affected, in_triage)
 - **Affected Components**: URN-based references linking vulnerabilities to specific components
 - **Source Attribution**: NVD references for vulnerability details
 
 ### SBOM Metadata
+
 - **Timestamp**: Conversion timestamp in RFC3339 format
 - **Tool Information**: Converter tool identification and version
 
@@ -575,7 +587,8 @@ The tool provides clear error messages for common issues:
 - **Schema Load Errors**: Missing or invalid schema files
 
 Example error output:
-```
+
+```rust
 Error: Failed to read input file
 Cause: No such file or directory (os error 2)
 File: input.json
@@ -583,7 +596,7 @@ File: input.json
 
 ## Project Structure
 
-```
+```bash
 sbom-converter/
 ├── Cargo.toml                      # Project configuration
 ├── README.md                       # This file
@@ -701,8 +714,8 @@ Contributions are welcome! Areas for improvement:
 
 Licensed under either of:
 
-- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
-- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
 
 at your option.
 

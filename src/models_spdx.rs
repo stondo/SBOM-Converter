@@ -60,6 +60,51 @@ pub struct SpdxElementMinimal {
     pub extra: HashMap<String, IgnoredAny>,
 }
 
+impl SpdxElementMinimal {
+    /// Extract CPE from external identifiers
+    pub fn extract_cpe(&self) -> Option<String> {
+        self.external_identifier.as_ref()?.iter()
+            .find(|id| id.external_identifier_type.as_deref() == Some("cpe23"))
+            .and_then(|id| id.identifier.clone())
+    }
+    
+    /// Extract PURL from external identifiers
+    pub fn extract_purl(&self) -> Option<String> {
+        self.external_identifier.as_ref()?.iter()
+            .find(|id| id.external_identifier_type.as_deref() == Some("purl"))
+            .and_then(|id| id.identifier.clone())
+    }
+    
+    /// Convert SPDX hashes to CycloneDX format
+    pub fn extract_hashes(&self) -> Option<Vec<crate::models_cdx::CdxHash>> {
+        let verified = self.verified_using.as_ref()?;
+        let hashes: Vec<_> = verified.iter()
+            .filter_map(|h| {
+                let alg = h.algorithm.as_ref()?.to_uppercase();
+                let content = h.hash_value.clone()?;
+                Some(crate::models_cdx::CdxHash {
+                    alg: match alg.as_str() {
+                        "SHA256" => "SHA-256".to_string(),
+                        "SHA1" => "SHA-1".to_string(),
+                        other => other.to_string(),
+                    },
+                    content,
+                })
+            })
+            .collect();
+        if hashes.is_empty() { None } else { Some(hashes) }
+    }
+    
+    /// Map SPDX purpose to CycloneDX scope
+    pub fn map_scope(&self) -> Option<String> {
+        match self.software_primary_purpose.as_deref()? {
+            "install" => Some("required".to_string()),
+            "source" | "build" => Some("excluded".to_string()),
+            _ => None,
+        }
+    }
+}
+
 /// Minimal struct for JSON-LD Element format (enhanced for full data extraction)
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -831,5 +876,287 @@ impl<'de, 'a, 'b, W: std::io::Write> Visitor<'de> for JsonLdGraphPass3Visitor<'a
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models_cdx::{CdxComponent, CdxHash};
+
+    #[test]
+    fn test_extract_cpe() {
+        let mut pkg = SpdxElementMinimal {
+            spdx_id: "SPDXRef-Package".to_string(),
+            element_type: "SpdxPackage".to_string(),
+            name: Some("test-package".to_string()),
+            version_info: Some("1.0.0".to_string()),
+            summary: None,
+            purl: None,
+            license_concluded: None,
+            external_identifier: Some(vec![
+                SpdxExternalIdentifier {
+                    id_type: "ExternalIdentifier".to_string(),
+                    external_identifier_type: Some("cpe23".to_string()),
+                    identifier: Some("cpe:2.3:a:vendor:product:1.0.0".to_string()),
+                },
+            ]),
+            verified_using: None,
+            software_primary_purpose: None,
+            extra: HashMap::new(),
+        };
+
+        assert_eq!(
+            pkg.extract_cpe(),
+            Some("cpe:2.3:a:vendor:product:1.0.0".to_string())
+        );
+
+        // Test with no external identifiers
+        pkg.external_identifier = None;
+        assert_eq!(pkg.extract_cpe(), None);
+
+        // Test with wrong identifier type
+        pkg.external_identifier = Some(vec![SpdxExternalIdentifier {
+            id_type: "ExternalIdentifier".to_string(),
+            external_identifier_type: Some("purl".to_string()),
+            identifier: Some("pkg:maven/group/artifact".to_string()),
+        }]);
+        assert_eq!(pkg.extract_cpe(), None);
+    }
+
+    #[test]
+    fn test_extract_purl() {
+        let pkg = SpdxElementMinimal {
+            spdx_id: "SPDXRef-Package".to_string(),
+            element_type: "SpdxPackage".to_string(),
+            name: Some("test-package".to_string()),
+            version_info: Some("1.0.0".to_string()),
+            summary: None,
+            purl: None,
+            license_concluded: None,
+            external_identifier: Some(vec![
+                SpdxExternalIdentifier {
+                    id_type: "ExternalIdentifier".to_string(),
+                    external_identifier_type: Some("purl".to_string()),
+                    identifier: Some("pkg:maven/com.example/my-library@1.0.0".to_string()),
+                },
+            ]),
+            verified_using: None,
+            software_primary_purpose: None,
+            extra: HashMap::new(),
+        };
+
+        assert_eq!(
+            pkg.extract_purl(),
+            Some("pkg:maven/com.example/my-library@1.0.0".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_hashes() {
+        let pkg = SpdxElementMinimal {
+            spdx_id: "SPDXRef-Package".to_string(),
+            element_type: "SpdxPackage".to_string(),
+            name: Some("test-package".to_string()),
+            version_info: Some("1.0.0".to_string()),
+            summary: None,
+            purl: None,
+            license_concluded: None,
+            external_identifier: None,
+            verified_using: Some(vec![
+                SpdxHash {
+                    hash_type: "Hash".to_string(),
+                    algorithm: Some("SHA256".to_string()),
+                    hash_value: Some("abc123".to_string()),
+                },
+                SpdxHash {
+                    hash_type: "Hash".to_string(),
+                    algorithm: Some("SHA1".to_string()),
+                    hash_value: Some("def456".to_string()),
+                },
+            ]),
+            software_primary_purpose: None,
+            extra: HashMap::new(),
+        };
+
+        let hashes = pkg.extract_hashes().unwrap();
+        assert_eq!(hashes.len(), 2);
+        assert_eq!(hashes[0].alg, "SHA-256");
+        assert_eq!(hashes[0].content, "abc123");
+        assert_eq!(hashes[1].alg, "SHA-1");
+        assert_eq!(hashes[1].content, "def456");
+    }
+
+    #[test]
+    fn test_hash_normalization() {
+        // Test lowercase input is normalized to uppercase with dashes
+        let pkg = SpdxElementMinimal {
+            spdx_id: "SPDXRef-Package".to_string(),
+            element_type: "SpdxPackage".to_string(),
+            name: Some("test-package".to_string()),
+            version_info: Some("1.0.0".to_string()),
+            summary: None,
+            purl: None,
+            license_concluded: None,
+            external_identifier: None,
+            verified_using: Some(vec![SpdxHash {
+                hash_type: "Hash".to_string(),
+                algorithm: Some("sha256".to_string()),
+                hash_value: Some("abc123".to_string()),
+            }]),
+            software_primary_purpose: None,
+            extra: HashMap::new(),
+        };
+
+        let hashes = pkg.extract_hashes().unwrap();
+        assert_eq!(hashes[0].alg, "SHA-256");
+    }
+
+    #[test]
+    fn test_map_scope() {
+        let mut pkg = SpdxElementMinimal {
+            spdx_id: "SPDXRef-Package".to_string(),
+            element_type: "SpdxPackage".to_string(),
+            name: Some("test-package".to_string()),
+            version_info: Some("1.0.0".to_string()),
+            summary: None,
+            purl: None,
+            license_concluded: None,
+            external_identifier: None,
+            verified_using: None,
+            software_primary_purpose: Some("install".to_string()),
+            extra: HashMap::new(),
+        };
+
+        assert_eq!(pkg.map_scope(), Some("required".to_string()));
+
+        pkg.software_primary_purpose = Some("source".to_string());
+        assert_eq!(pkg.map_scope(), Some("excluded".to_string()));
+
+        pkg.software_primary_purpose = Some("build".to_string());
+        assert_eq!(pkg.map_scope(), Some("excluded".to_string()));
+
+        pkg.software_primary_purpose = Some("other".to_string());
+        assert_eq!(pkg.map_scope(), None);
+
+        pkg.software_primary_purpose = None;
+        assert_eq!(pkg.map_scope(), None);
+    }
+
+    #[test]
+    fn test_from_cdx_component_with_metadata() {
+        let cdx_comp = CdxComponent {
+            component_type: "library".to_string(),
+            bom_ref: "pkg-123".to_string(),
+            name: "my-library".to_string(),
+            version: Some("2.0.0".to_string()),
+            purl: Some("pkg:npm/my-library@2.0.0".to_string()),
+            cpe: Some("cpe:2.3:a:vendor:my-library:2.0.0".to_string()),
+            description: Some("A test library".to_string()),
+            hashes: Some(vec![CdxHash {
+                alg: "SHA-256".to_string(),
+                content: "abcdef123456".to_string(),
+            }]),
+            scope: Some("required".to_string()),
+            licenses: None,
+            extra: HashMap::new(),
+        };
+
+        let spdx_pkg = SpdxPackage::from_cdx_component(&cdx_comp);
+
+        assert_eq!(spdx_pkg.spdx_id, "SPDXRef-pkg-123");
+        assert_eq!(spdx_pkg.name, "my-library");
+        assert_eq!(spdx_pkg.version_info, Some("2.0.0".to_string()));
+        assert_eq!(spdx_pkg.summary, Some("A test library".to_string()));
+        assert_eq!(spdx_pkg.purl, Some("pkg:npm/my-library@2.0.0".to_string()));
+
+        // Verify CPE mapping
+        let ext_ids = spdx_pkg.external_identifier.unwrap();
+        assert_eq!(ext_ids.len(), 1);
+        assert_eq!(ext_ids[0].external_identifier_type, Some("cpe23Type".to_string()));
+        assert_eq!(
+            ext_ids[0].identifier,
+            Some("cpe:2.3:a:vendor:my-library:2.0.0".to_string())
+        );
+
+        // Verify hash mapping (SHA-256 -> sha-256)
+        let hashes = spdx_pkg.verified_using.unwrap();
+        assert_eq!(hashes.len(), 1);
+        assert_eq!(hashes[0].algorithm, Some("sha-256".to_string()));
+        assert_eq!(hashes[0].hash_value, Some("abcdef123456".to_string()));
+
+        // Verify scope mapping (required -> install)
+        assert_eq!(
+            spdx_pkg.software_primary_purpose,
+            Some("install".to_string())
+        );
+    }
+
+    #[test]
+    fn test_from_cdx_component_without_metadata() {
+        let cdx_comp = CdxComponent {
+            component_type: "library".to_string(),
+            bom_ref: "minimal-pkg".to_string(),
+            name: "minimal-library".to_string(),
+            version: None,
+            purl: None,
+            cpe: None,
+            description: None,
+            hashes: None,
+            scope: None,
+            licenses: None,
+            extra: HashMap::new(),
+        };
+
+        let spdx_pkg = SpdxPackage::from_cdx_component(&cdx_comp);
+
+        assert_eq!(spdx_pkg.spdx_id, "SPDXRef-minimal-pkg");
+        assert_eq!(spdx_pkg.name, "minimal-library");
+        assert!(spdx_pkg.version_info.is_none());
+        assert!(spdx_pkg.summary.is_none());
+        assert!(spdx_pkg.purl.is_none());
+        assert!(spdx_pkg.external_identifier.is_none());
+        assert!(spdx_pkg.verified_using.is_none());
+        assert!(spdx_pkg.software_primary_purpose.is_none());
+    }
+
+    #[test]
+    fn test_scope_mapping_bidirectional() {
+        // Test required <-> install
+        let mut cdx_comp = CdxComponent {
+            component_type: "library".to_string(),
+            bom_ref: "test".to_string(),
+            name: "test".to_string(),
+            version: None,
+            purl: None,
+            cpe: None,
+            description: None,
+            hashes: None,
+            scope: Some("required".to_string()),
+            licenses: None,
+            extra: HashMap::new(),
+        };
+
+        let spdx_pkg = SpdxPackage::from_cdx_component(&cdx_comp);
+        assert_eq!(
+            spdx_pkg.software_primary_purpose,
+            Some("install".to_string())
+        );
+
+        // Test optional <-> optional
+        cdx_comp.scope = Some("optional".to_string());
+        let spdx_pkg = SpdxPackage::from_cdx_component(&cdx_comp);
+        assert_eq!(
+            spdx_pkg.software_primary_purpose,
+            Some("optional".to_string())
+        );
+
+        // Test excluded -> other
+        cdx_comp.scope = Some("excluded".to_string());
+        let spdx_pkg = SpdxPackage::from_cdx_component(&cdx_comp);
+        assert_eq!(
+            spdx_pkg.software_primary_purpose,
+            Some("other".to_string())
+        );
     }
 }
