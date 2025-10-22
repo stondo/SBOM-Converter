@@ -36,6 +36,8 @@ pub struct Config {
     pub output_file: PathBuf,
     pub direction: ConversionDirection,
     pub validate: bool,
+    pub split_vex: bool,
+    pub packages_only: bool,
 }
 
 /// The main entry point for the conversion logic.
@@ -123,6 +125,8 @@ pub fn run(config: Config) -> Result<(), ConverterError> {
                 output_writer,
                 &config.input_file,
                 progress.clone(),
+                config.packages_only,
+                config.split_vex,
             )?;
         }
     }

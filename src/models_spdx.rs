@@ -2,11 +2,11 @@
 //!
 //! We also define the *output* structs for serialization.
 
-use serde::de::{self, IgnoredAny, MapAccess, Visitor};
+use serde::de::{self, Deserializer, IgnoredAny, MapAccess, SeqAccess, Visitor, DeserializeSeed};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
-use std::io::BufWriter;
+use std::io::{BufWriter, Write};
 
 // --- Minimal Deserialization Structs (for Pass 1 & 2) ---
 
@@ -52,8 +52,8 @@ pub struct SpdxElementMinimal {
     pub extra: HashMap<String, IgnoredAny>,
 }
 
-/// Minimal struct for JSON-LD Element format
-#[derive(Deserialize, Debug)]
+/// Minimal struct for JSON-LD Element format (enhanced for full data extraction)
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonLdElement {
     #[serde(rename = "type")]
@@ -66,9 +66,98 @@ pub struct JsonLdElement {
     pub software_package_version: Option<String>, // JSON-LD uses different field name
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub software_primary_purpose: Option<String>, // "install", "source", etc.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub external_identifier: Option<Vec<SpdxExternalIdentifier>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub verified_using: Option<Vec<SpdxHash>>,
     // We use IgnoredAny to quickly skip over fields we don't need
     #[serde(flatten)]
     pub extra: HashMap<String, IgnoredAny>,
+}
+
+/// External identifier (CPE, PURL, etc.)
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SpdxExternalIdentifier {
+    #[serde(rename = "type")]
+    pub id_type: String,
+    pub external_identifier_type: Option<String>, // "cpe23", "purl", etc.
+    pub identifier: Option<String>,
+}
+
+/// Hash information from SPDX
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SpdxHash {
+    #[serde(rename = "type")]
+    pub hash_type: String,
+    pub algorithm: Option<String>, // "sha256", "sha1", etc.
+    pub hash_value: Option<String>,
+}
+
+/// Vulnerability data from JSON-LD
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonLdVulnerability {
+    #[serde(rename = "type")]
+    pub vuln_type: String,
+    #[serde(rename = "spdxId")]
+    pub spdx_id: String,
+    pub external_identifier: Option<Vec<SpdxExternalIdentifier>>,
+}
+
+impl JsonLdVulnerability {
+    /// Extract CVE ID from spdxId URL or external identifiers
+    pub fn extract_cve_id(&self) -> Option<String> {
+        // Try external_identifier first
+        if let Some(cve) = self.external_identifier.as_ref()
+            .and_then(|ids| ids.iter()
+                .find(|id| id.external_identifier_type.as_deref() == Some("cve"))
+                .and_then(|id| id.identifier.clone()))
+        {
+            return Some(cve);
+        }
+        
+        // Fall back to extracting from spdxId URL (e.g., .../vulnerability/CVE-2025-11081)
+        if let Some(cve_part) = self.spdx_id.split("/vulnerability/").nth(1) {
+            return Some(cve_part.to_string());
+        }
+        
+        None
+    }
+}
+
+/// VEX assessment relationship from JSON-LD
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonLdVexRelationship {
+    #[serde(rename = "type")]
+    pub relationship_type: String, // "security_VexNotAffectedVulnAssessmentRelationship", etc.
+    #[serde(rename = "spdxId")]
+    pub spdx_id: String,
+    pub from: String, // vulnerability ID
+    #[serde(rename = "relationshipType")]
+    pub relationship_type_enum: String, // "doesNotAffect", "fixedIn"
+    pub to: Vec<String>, // affected component IDs
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub security_impact_statement: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub security_vex_version: Option<String>,
+}
+
+impl JsonLdVexRelationship {
+    /// Map SPDX VEX state to CycloneDX analysis state
+    pub fn map_state(&self) -> String {
+        match self.relationship_type.as_str() {
+            "security_VexNotAffectedVulnAssessmentRelationship" => "not_affected",
+            "security_VexFixedVulnAssessmentRelationship" => "resolved",
+            _ => "in_triage",
+        }.to_string()
+    }
 }
 
 impl JsonLdElement {
@@ -82,6 +171,49 @@ impl JsonLdElement {
             purl: None, // Would need to extract from externalIdentifier
             license_concluded: None, // Would need to extract from relationships
             extra: HashMap::new(),
+        }
+    }
+    
+    /// Extract CPE from external identifiers
+    pub fn extract_cpe(&self) -> Option<String> {
+        self.external_identifier.as_ref()?.iter()
+            .find(|id| id.external_identifier_type.as_deref() == Some("cpe23"))
+            .and_then(|id| id.identifier.clone())
+    }
+    
+    /// Extract PURL from external identifiers
+    pub fn extract_purl(&self) -> Option<String> {
+        self.external_identifier.as_ref()?.iter()
+            .find(|id| id.external_identifier_type.as_deref() == Some("purl"))
+            .and_then(|id| id.identifier.clone())
+    }
+    
+    /// Convert SPDX hashes to CycloneDX format
+    pub fn extract_hashes(&self) -> Option<Vec<crate::models_cdx::CdxHash>> {
+        let verified = self.verified_using.as_ref()?;
+        let hashes: Vec<_> = verified.iter()
+            .filter_map(|h| {
+                let alg = h.algorithm.as_ref()?.to_uppercase();
+                let content = h.hash_value.clone()?;
+                Some(crate::models_cdx::CdxHash {
+                    alg: match alg.as_str() {
+                        "SHA256" => "SHA-256".to_string(),
+                        "SHA1" => "SHA-1".to_string(),
+                        other => other.to_string(),
+                    },
+                    content,
+                })
+            })
+            .collect();
+        if hashes.is_empty() { None } else { Some(hashes) }
+    }
+    
+    /// Map SPDX purpose to CycloneDX scope
+    pub fn map_scope(&self) -> Option<String> {
+        match self.software_primary_purpose.as_deref()? {
+            "install" => Some("required".to_string()),
+            "source" | "build" => Some("excluded".to_string()),
+            _ => None,
         }
     }
 }
@@ -353,6 +485,7 @@ pub struct SpdxPass2Visitor<'a, W: std::io::Write> {
     pub first_component: bool,
     pub first_vulnerability: bool,
     pub progress: crate::progress::ProgressTracker,
+    pub packages_only: bool,
 }
 
 impl<'de, 'a, W: std::io::Write> Visitor<'de> for SpdxPass2Visitor<'a, W> {
@@ -469,21 +602,28 @@ impl<'de, 'a, 'b, W: std::io::Write> Visitor<'de> for JsonLdGraphPass2Visitor<'a
         // In Pass 2, we only care about elements (packages, files, vulnerabilities)
         while let Some(value) = seq.next_element::<serde_json::Value>()? {
             if let Some(type_name) = value.get("type").and_then(|t| t.as_str()) {
-                if type_name == "software_Package" || type_name == "software_File" || type_name == "security_Vulnerability" {
-                    // Parse as JSON-LD element
+                // Skip files if packages_only is enabled
+                if type_name == "software_File" && self.state.packages_only {
+                    self.state.progress.increment_element();
+                    continue;
+                }
+                
+                if type_name == "software_Package" || type_name == "software_File" {
+                    // Parse as JSON-LD element with full data
                     let element: JsonLdElement = serde_json::from_value(value)
                         .map_err(de::Error::custom)?;
                     
-                    // Convert to simple format and process
-                    let simple_element = element.to_simple();
-                    crate::converter_spdx_to_cdx::handle_spdx_element(
-                        simple_element,
+                    // Call enhanced handler with full element data
+                    crate::converter_spdx_to_cdx::handle_jsonld_element(
+                        element,
                         self.state.writer,
                         self.state.index,
                         &mut self.state.first_component,
-                        &mut self.state.first_vulnerability,
                     )
                     .map_err(de::Error::custom)?;
+                    self.state.progress.increment_element();
+                } else if type_name == "security_Vulnerability" {
+                    // Skip for now - will handle in Pass 3
                     self.state.progress.increment_element();
                 }
             }
@@ -492,3 +632,150 @@ impl<'de, 'a, 'b, W: std::io::Write> Visitor<'de> for JsonLdGraphPass2Visitor<'a
     }
 }
 
+/// Custom visitor for Pass 3 (Vulnerability Extraction Pass)
+pub struct SpdxPass3VulnVisitor<'a, W: std::io::Write> {
+    pub writer: &'a mut BufWriter<W>,
+    pub serial_number: String,
+    pub first_vuln: bool,
+}
+
+impl<'de, 'a, W: std::io::Write> Visitor<'de> for SpdxPass3VulnVisitor<'a, W> {
+    type Value = ();
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a top-level SPDX JSON object for vulnerability extraction")
+    }
+
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        while let Some(key) = map.next_key::<String>()? {
+            if key == "@graph" {
+                // This is JSON-LD format - process the graph
+                let state = JsonLdVulnState {
+                    writer: self.writer,
+                    serial_number: &self.serial_number,
+                    first_vuln: self.first_vuln,
+                };
+                map.next_value_seed(JsonLdGraphPass3Visitor { state })?;
+            } else {
+                // Skip other fields
+                map.next_value::<serde_json::Value>()?;
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Helper struct to hold state during Pass 3 graph processing
+struct JsonLdVulnState<'a, 'b, W: std::io::Write> {
+    writer: &'a mut BufWriter<W>,
+    serial_number: &'b str,
+    first_vuln: bool,
+}
+
+/// Visitor for @graph array in Pass 3 - extracts vulnerabilities and VEX relationships
+struct JsonLdGraphPass3Visitor<'a, 'b, W: std::io::Write> {
+    state: JsonLdVulnState<'a, 'b, W>,
+}
+
+impl<'de, 'a, 'b, W: std::io::Write> DeserializeSeed<'de> for JsonLdGraphPass3Visitor<'a, 'b, W> {
+    type Value = ();
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_seq(self)
+    }
+}
+
+impl<'de, 'a, 'b, W: std::io::Write> Visitor<'de> for JsonLdGraphPass3Visitor<'a, 'b, W> {
+    type Value = ();
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("@graph array for vulnerability extraction")
+    }
+
+    fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        // First pass: collect vulnerabilities
+        let mut vulnerabilities: Vec<JsonLdVulnerability> = Vec::new();
+        let mut vex_relationships: Vec<JsonLdVexRelationship> = Vec::new();
+
+        // We need to collect all data first, then write
+        // This requires deserializing the entire graph for this pass
+        while let Some(element) = seq.next_element::<serde_json::Value>()? {
+            if let Some(type_name) = element.get("type").and_then(|t| t.as_str()) {
+                if type_name == "security_Vulnerability" {
+                    if let Ok(vuln) = serde_json::from_value::<JsonLdVulnerability>(element) {
+                        vulnerabilities.push(vuln);
+                    }
+                } else if type_name.starts_with("security_Vex") {
+                    if let Ok(vex) = serde_json::from_value::<JsonLdVexRelationship>(element) {
+                        vex_relationships.push(vex);
+                    }
+                }
+            }
+        }
+
+        // Now write vulnerabilities with their VEX assessments
+        for vuln in vulnerabilities {
+            if let Some(cve_id) = vuln.extract_cve_id() {
+                // Find VEX relationships for this vulnerability
+                let affects: Vec<String> = vex_relationships
+                    .iter()
+                    .filter(|vex| vex.from == vuln.spdx_id)
+                    .flat_map(|vex| vex.to.iter())
+                    .map(|spdx_id| {
+                        let bom_ref = crate::converter_spdx_to_cdx::extract_bom_ref(spdx_id);
+                        format!("{}#{}",self.state.serial_number, bom_ref)
+                    })
+                    .collect();
+
+                // Determine VEX state
+                let state = vex_relationships
+                    .iter()
+                    .find(|vex| vex.from == vuln.spdx_id)
+                    .map(|vex| vex.map_state())
+                    .unwrap_or_else(|| "not_affected".to_string());
+
+                // Write vulnerability (even if no affects, for now)
+                if !self.state.first_vuln {
+                    self.state.writer.write_all(b",\n").map_err(de::Error::custom)?;
+                }
+                self.state.first_vuln = false;
+
+                let cdx_vuln = crate::models_cdx::CdxVulnerability {
+                        id: cve_id.clone(),
+                        source: Some(crate::models_cdx::CdxVulnSource {
+                            name: "NVD".to_string(),
+                            url: Some(format!("https://nvd.nist.gov/vuln/detail/{}", cve_id)),
+                        }),
+                        description: None,
+                        analysis: Some(crate::models_cdx::CdxAnalysis {
+                            state,
+                            detail: None,
+                            first_issued: None,
+                            last_updated: None,
+                        }),
+                        affects: Some(affects.into_iter().map(|ref_str| {
+                            crate::models_cdx::CdxAffects {
+                                bom_ref: ref_str,
+                            }
+                        }).collect()),
+                        extra: HashMap::new(),
+                    };
+
+                self.state.writer.write_all(b"    ").map_err(de::Error::custom)?;
+                serde_json::to_writer(&mut *self.state.writer, &cdx_vuln)
+                    .map_err(de::Error::custom)?;
+            }
+        }
+
+        Ok(())
+    }
+}

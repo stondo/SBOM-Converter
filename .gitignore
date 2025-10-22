@@ -1,1 +1,12 @@
 /target
+
+# Example SBOM files (may contain sensitive data)
+*.spdx.json
+bom.json
+sbom-cyclonedx.json
+sbom-cyclonedx-packages-only.json
+*.vex.json
+vex.json
+
+# Keep only schema files
+!schemas/*.json

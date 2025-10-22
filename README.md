@@ -18,6 +18,8 @@ A high-performance, memory-efficient Rust tool for bidirectional conversion betw
 - 🚀 **Streaming Architecture**: Handles multi-gigabyte files with constant memory usage
 - ⚡ **High Performance**: Multi-pass optimization for large-scale SBOMs
 - 📋 **JSON-LD Support**: Full support for SPDX 3.0.1 JSON-LD/RDF format (OpenEmbedded, Yocto)
+- 🛡️ **Enhanced Security Data**: Captures CPE identifiers, hashes (SHA-256), and vulnerability information
+- 🔒 **VEX Support**: Full vulnerability and VEX assessment extraction with URN references
 - ✅ **Schema Validation**: Optional JSON schema validation against official SPDX/CDX schemas
 - 🛡️ **Robust Error Handling**: Comprehensive error messages and validation
 - 📊 **Verbose Logging**: Optional detailed output for debugging and monitoring
@@ -36,10 +38,19 @@ Uses a **single-pass streaming with temp file** approach:
 
 ### SPDX → CDX Conversion
 
-Uses a **two-pass indexing** approach:
+Uses a **three-pass indexing** approach for comprehensive data extraction:
 
 1. **Pass 1**: Build relationship index (HashMap of package dependencies)
-2. **Pass 2**: Re-stream file and convert elements using the index
+2. **Pass 2**: Stream and convert components with enhanced metadata (CPE, hashes, descriptions)
+3. **Pass 3**: Extract vulnerabilities and VEX assessments with URN-based affects references
+
+**Enhanced Data Extraction:**
+- CPE identifiers from `externalIdentifier` fields
+- SHA-256/SHA-1 hashes from `verifiedUsing` fields
+- Component descriptions and scopes
+- CVE vulnerability data with NVD source
+- VEX assessment states (resolved, not_affected, in_triage)
+- Metadata with timestamp and tool information
 
 Both methods maintain **O(1) memory complexity** relative to file size using Serde's `Visitor` pattern.
 
@@ -78,6 +89,8 @@ sbom-converter --input <INPUT_FILE> --output <OUTPUT_FILE> --direction <DIRECTIO
 | `--input` | `-i` | Yes | Path to input SBOM file (JSON format) |
 | `--output` | `-o` | Yes | Path to output SBOM file (JSON format) |
 | `--direction` | `-d` | Yes | Conversion direction: `spdx-to-cdx` or `cdx-to-spdx` |
+| `--packages-only` | | No | Only convert packages/libraries, skip individual files (SPDX→CDX only) |
+| `--split-vex` | | No | Split vulnerabilities into separate VEX file (SPDX→CDX only) |
 | `--verbose` | `-v` | No | Enable detailed logging output |
 | `--validate` | | No | Enable JSON schema validation (requires schemas/) |
 
@@ -92,6 +105,37 @@ sbom-converter --input <INPUT_FILE> --output <OUTPUT_FILE> --direction <DIRECTIO
   --direction spdx-to-cdx \
   --verbose
 ```
+
+#### Convert SPDX to CycloneDX (Packages Only)
+
+Filter out individual files, keeping only packages/libraries:
+
+```bash
+./target/release/sbom-converter \
+  --input sbom-spdx.json \
+  --output sbom-cyclonedx.json \
+  --direction spdx-to-cdx \
+  --packages-only \
+  --verbose
+```
+
+#### Convert SPDX to CycloneDX with Split VEX
+
+Separate vulnerabilities into a dedicated VEX file following CycloneDX best practices:
+
+```bash
+./target/release/sbom-converter \
+  --input sbom-spdx.json \
+  --output bom.json \
+  --direction spdx-to-cdx \
+  --packages-only \
+  --split-vex \
+  --verbose
+```
+
+This produces two files:
+- `bom.json` - Components and dependencies (no vulnerabilities)
+- `sbom-spdx.vex.json` - Vulnerabilities with URN references to components
 
 #### Convert CycloneDX to SPDX
 
@@ -169,6 +213,159 @@ Semantic web format with `@context` and `@graph` (used by OpenEmbedded, Yocto):
 
 The converter automatically detects the format and processes it appropriately. JSON-LD URIs are hashed to create unique CycloneDX bom-refs.
 
+## Advanced Conversion Options
+
+### Packages-Only Mode (`--packages-only`)
+
+When converting from SPDX to CycloneDX, you can filter out individual files and keep only packages/libraries:
+
+```bash
+./target/release/sbom-converter \
+  --input sbom-spdx.json \
+  --output sbom-cyclonedx.json \
+  --direction spdx-to-cdx \
+  --packages-only
+```
+
+**Benefits:**
+- Reduces output size significantly (e.g., 881KB → 325KB)
+- Focuses on meaningful software components (packages/libraries)
+- Excludes individual files which are often not relevant for dependency analysis
+- Ideal for supply chain security analysis and vulnerability management
+
+**Example Impact:**
+- Before: 3,231 components (863 packages + 2,368 files)
+- After: 863 components (packages only)
+
+### Split VEX Mode (`--split-vex`)
+
+Following CycloneDX best practices, you can separate vulnerability data into a dedicated VEX (Vulnerability Exploitability eXchange) file:
+
+```bash
+./target/release/sbom-converter \
+  --input sbom-spdx.json \
+  --output bom.json \
+  --direction spdx-to-cdx \
+  --split-vex
+```
+
+**Output Files:**
+1. `bom.json` - Main SBOM with components and dependencies (no vulnerabilities)
+2. `{input-name}.vex.json` - Separate VEX file with all vulnerability data
+
+**Benefits:**
+- Follows CycloneDX VEX specification for large vulnerability datasets
+- Main BOM stays focused on component inventory
+- VEX file can be updated independently as new vulnerabilities are discovered
+- Reduces main BOM size when vulnerability data is extensive
+- Supports dynamic vulnerability scanning workflows
+
+**VEX File Structure:**
+- Full CycloneDX 1.6 document with `bomFormat`, `specVersion`, `serialNumber`, `version`
+- Metadata with tool information
+- Vulnerabilities array with URN references to components in main BOM
+- URN format: `urn:uuid:{main-bom-serial-number}#{component-bom-ref}`
+
+**Example URN Reference:**
+```
+"affects": [{
+  "ref": "urn:uuid:b5ac6773-5bc6-477e-a55d-77b45835e867#busybox-b1ef70881579a83f"
+}]
+```
+
+### Combined Usage
+
+Both flags work together for optimal results:
+
+```bash
+./target/release/sbom-converter \
+  --input yocto-build.spdx.json \
+  --output bom.json \
+  --direction spdx-to-cdx \
+  --packages-only \
+  --split-vex
+```
+
+**Result:**
+- `bom.json` (325KB): 863 packages with metadata, 361 dependencies, 0 vulnerabilities
+- `yocto-build.vex.json` (62KB): 57 vulnerabilities with URN references
+
+This combination provides:
+- Clean, focused component inventory
+- Separate vulnerability tracking
+- Smaller file sizes for easier distribution
+- Better alignment with CycloneDX best practices
+
+
+## Enhanced Data Extraction
+
+When converting from SPDX 3.0.1 (especially JSON-LD format) to CycloneDX 1.6, the converter captures comprehensive metadata:
+
+### Component Metadata
+- **CPE Identifiers**: Extracted from `externalIdentifier` fields for security scanning
+- **Hash Values**: SHA-256 and SHA-1 hashes from `verifiedUsing` fields for integrity verification
+- **Descriptions**: Component summaries for documentation
+- **Scopes**: Mapped from `software_primaryPurpose` (e.g., APPLICATION, LIBRARY, FRAMEWORK)
+- **PURLs**: Package URLs preserved from SPDX for package identification
+
+### Vulnerability & VEX Data
+- **CVE Identifiers**: Extracted from vulnerability objects or SPDX IDs
+- **VEX Analysis**: Assessment states (resolved, not_affected, in_triage)
+- **Affected Components**: URN-based references linking vulnerabilities to specific components
+- **Source Attribution**: NVD references for vulnerability details
+
+### SBOM Metadata
+- **Timestamp**: Conversion timestamp in RFC3339 format
+- **Tool Information**: Converter tool identification and version
+
+### Example Output Structure
+
+```json
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:...",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2025-10-22T17:21:20.123Z",
+    "tools": {
+      "components": [{
+        "type": "application",
+        "name": "sbom-converter",
+        "bom-ref": "sbom-converter-0.1.0"
+      }]
+    }
+  },
+  "components": [{
+    "bom-ref": "busybox-b1ef70881579a83f",
+    "type": "library",
+    "name": "busybox",
+    "version": "1.36.1",
+    "description": "BusyBox combines tiny versions of many common UNIX utilities",
+    "cpe": "cpe:2.3:a:busybox:busybox:1.36.1:*:*:*:*:*:*:*",
+    "purl": "pkg:yocto/busybox@1.36.1",
+    "scope": "required",
+    "hashes": [{
+      "alg": "SHA-256",
+      "content": "a4b0c..."
+    }]
+  }],
+  "vulnerabilities": [{
+    "id": "CVE-2022-28391",
+    "source": {
+      "name": "NVD",
+      "url": "https://nvd.nist.gov/vuln/detail/CVE-2022-28391"
+    },
+    "analysis": {
+      "state": "resolved"
+    },
+    "affects": [{
+      "ref": "urn:uuid:77cabc09-32dd-43cf-9929-0456af623129#busybox-b1ef70881579a83f"
+    }]
+  }]
+}
+```
+
 ## Performance Characteristics
 
 ### Memory Usage
@@ -185,6 +382,27 @@ The converter automatically detects the format and processes it appropriately. J
 
 ### Benchmarks (Example Hardware)
 
+**Large File Conversion:**
+```
+File Size: 5.4MB SPDX JSON-LD (Yocto/OpenEmbedded)
+Input: 863 packages, 2368 files, 57 vulnerabilities, 456 VEX assessments
+Output: 881KB CycloneDX 1.6 JSON (full conversion)
+        325KB CycloneDX BOM + 62KB VEX file (with --packages-only --split-vex)
+Conversion: SPDX → CDX (3-pass)
+Time: ~46ms
+Peak Memory: ~100MB
+Throughput: 71,843 elements/sec
+Data Extracted:
+  - 3,231 components (863 packages when --packages-only used)
+  - 361 dependencies
+  - 2,979 hash values (SHA-256)
+  - 188 CPE identifiers
+  - 189 descriptions
+  - 57 vulnerabilities with VEX analysis
+  - 23 vulnerabilities with affected component URNs
+```
+
+**Very Large File Conversion:**
 ```
 File Size: 2.9GB
 Conversion: SPDX → CDX
@@ -306,7 +524,6 @@ cargo clippy
 - **CycloneDX Version:** Only CycloneDX 1.6 is supported (earlier versions are not supported)
 - **Relationship Mapping:** Some complex SPDX relationship types may be mapped in a lossy manner
 - **External References:** External references and attestations may have limited mapping
-- **VEX Support:** Vulnerability Exchange (VEX) documents are partially supported (vulnerabilities detected but not fully converted)
 
 ## Contributing
 

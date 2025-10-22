@@ -26,7 +26,32 @@ pub struct CdxBom {
     pub version: u32,
 }
 
-/// A minimal representation of a CycloneDX Component.
+/// CycloneDX Metadata structure
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CdxMetadata {
+    pub timestamp: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tools: Option<CdxTools>,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CdxTools {
+    pub components: Vec<CdxToolComponent>,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CdxToolComponent {
+    #[serde(rename = "type")]
+    pub component_type: String,
+    pub name: String,
+    #[serde(rename = "bom-ref")]
+    pub bom_ref: String,
+}
+
+/// Enhanced CycloneDX Component with full field support
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CdxComponent {
@@ -38,13 +63,29 @@ pub struct CdxComponent {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cpe: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub purl: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scope: Option<String>, // "required", "excluded", etc.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hashes: Option<Vec<CdxHash>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub licenses: Option<Vec<CdxLicenseChoice>>,
     // We use IgnoredAny to quickly skip over fields we don't need during deserialization
     // Skip it during serialization
     #[serde(flatten, skip_serializing)]
     pub extra: HashMap<String, IgnoredAny>,
+}
+
+/// Hash algorithm and value
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct CdxHash {
+    pub alg: String,      // "SHA-256", "SHA-1", "MD5", etc.
+    pub content: String,  // hex-encoded hash value
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -75,8 +116,8 @@ pub struct CdxDependency {
     pub depends_on: Vec<String>,
 }
 
-/// A minimal representation of a CycloneDX Vulnerability.
-#[derive(Deserialize, Debug)]
+/// Complete CycloneDX Vulnerability structure with VEX support
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CdxVulnerability {
     pub id: String, // e.g., CVE-2021-44228
@@ -85,22 +126,37 @@ pub struct CdxVulnerability {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub analysis: Option<CdxAnalysis>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub affects: Option<Vec<CdxAffects>>,
-    #[serde(flatten)]
+    #[serde(flatten, skip_serializing)]
     pub extra: HashMap<String, IgnoredAny>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct CdxVulnSource {
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
 }
 
-#[derive(Deserialize, Debug)]
+/// VEX analysis information
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CdxAnalysis {
+    pub state: String, // "resolved", "not_affected", "in_triage", etc.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub first_issued: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_updated: Option<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
 pub struct CdxAffects {
     #[serde(rename = "ref")]
-    pub bom_ref: String,
+    pub bom_ref: String,  // URN reference to affected component
 }
 
 // --- Streaming Visitor Logic ---

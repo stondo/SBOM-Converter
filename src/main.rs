@@ -23,6 +23,12 @@ struct Cli {
 
     #[arg(long)]
     validate: bool,
+
+    #[arg(long, help = "Split vulnerabilities into separate VEX file (SPDX→CDX only)")]
+    split_vex: bool,
+
+    #[arg(long, help = "Only convert packages/libraries, skip individual files (SPDX→CDX only)")]
+    packages_only: bool,
 }
 
 #[derive(Debug, Clone, ValueEnum)]
@@ -62,6 +68,8 @@ fn run_app() -> Result<(), ConverterError> {
         output_file: cli.output,
         direction,
         validate: cli.validate,
+        split_vex: cli.split_vex,
+        packages_only: cli.packages_only,
     };
 
     sbom_converter::run(config)
