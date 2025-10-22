@@ -1,0 +1,428 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spdx.github.io/spdx-3-model/spdx-3.0.schema.json",
+  "title": "SPDX 3.0.1 Document",
+  "description": "Schema for an SPDX 3.0.1 Software Bill of Materials document.",
+  "type": "object",
+  "properties": {
+    "spdxId": {
+      "description": "The unique identifier for the SPDX document, should be 'SPDXRef-DOCUMENT'.",
+      "type": "string"
+    },
+    "spdxVersion": {
+      "description": "The version of the SPDX specification, should be 'SPDX-3.0'.",
+      "type": "string"
+    },
+    "creationInfo": {
+      "type": "object",
+      "properties": {
+        "created": {
+          "description": "The timestamp of the document's creation in ISO 8601 format.",
+          "type": "string",
+          "format": "date-time"
+        },
+        "creators": {
+          "description": "A list of agents that created the document (e.g., 'Tool: sbom-converter-1.0').",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "created",
+        "creators"
+      ]
+    },
+    "name": {
+      "description": "The name of the SPDX document.",
+      "type": "string"
+    },
+    "documentNamespace": {
+      "description": "A unique URI for the SPDX document.",
+      "type": "string",
+      "format": "uri"
+    },
+    "elements": {
+      "description": "A list of all elements in the SBOM, such as Packages, Files, and Vulnerabilities.",
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/packageElement"
+          },
+          {
+            "$ref": "#/$defs/fileElement"
+          },
+          {
+            "$ref": "#/$defs/vulnerabilityElement"
+          },
+          {
+            "$ref": "#/$defs/bundleElement"
+          },
+          {
+            "$ref": "#/$defs/annotationElement"
+          }
+        ]
+      }
+    },
+    "relationships": {
+      "description": "A list of relationships connecting the elements.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/relationship"
+      }
+    }
+  },
+  "required": [
+    "spdxId",
+    "spdxVersion",
+    "creationInfo",
+    "name",
+    "documentNamespace",
+    "elements"
+  ],
+  "$defs": {
+    "packageElement": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Package"
+        },
+        "spdxId": {
+          "type": "string"
+        },
+        "elementName": {
+          "type": "string"
+        },
+        "creationInfo": {
+          "$ref": "#/$defs/creationInfo"
+        },
+        "version": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "downloadLocation": {
+          "type": "string"
+        },
+        "primaryPackagePurpose": {
+          "type": "string",
+          "enum": [
+            "APPLICATION",
+            "FRAMEWORK",
+            "LIBRARY",
+            "CONTAINER",
+            "OPERATING_SYSTEM",
+            "DEVICE",
+            "FIRMWARE",
+            "SOURCE",
+            "ARCHIVE",
+            "FILE",
+            "INSTALL",
+            "OTHER"
+          ]
+        },
+        "copyrightText": {
+          "type": "string"
+        },
+        "licenseConcluded": {
+          "type": "string"
+        },
+        "licenseDeclared": {
+          "type": "string"
+        },
+        "externalRefs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/externalRef"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "spdxId",
+        "elementName",
+        "creationInfo",
+        "downloadLocation"
+      ]
+    },
+    "fileElement": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "File"
+        },
+        "spdxId": {
+          "type": "string"
+        },
+        "elementName": {
+          "type": "string"
+        },
+        "creationInfo": {
+          "$ref": "#/$defs/creationInfo"
+        },
+        "checksums": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/hash"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "spdxId",
+        "elementName",
+        "creationInfo"
+      ]
+    },
+    "vulnerabilityElement": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Vulnerability"
+        },
+        "spdxId": {
+          "type": "string"
+        },
+        "elementName": {
+          "type": "string"
+        },
+        "creationInfo": {
+          "$ref": "#/$defs/creationInfo"
+        },
+        "vulnerabilityId": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "publishedTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "modifiedTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "vulnerabilityTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "severity": {
+          "type": "object",
+          "properties": {
+            "severitySystem": {
+              "type": "string"
+            },
+            "score": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "severitySystem",
+            "score"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "spdxId",
+        "elementName",
+        "creationInfo",
+        "vulnerabilityId"
+      ]
+    },
+    "bundleElement": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Bundle"
+        },
+        "spdxId": {
+          "type": "string"
+        },
+        "elementName": {
+          "type": "string"
+        },
+        "creationInfo": {
+          "$ref": "#/$defs/creationInfo"
+        },
+        "context": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "spdxId",
+        "elementName",
+        "creationInfo"
+      ]
+    },
+    "annotationElement": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Annotation"
+        },
+        "spdxId": {
+          "type": "string"
+        },
+        "elementName": {
+          "type": "string"
+        },
+        "creationInfo": {
+          "$ref": "#/$defs/creationInfo"
+        },
+        "annotationType": {
+          "type": "string"
+        },
+        "comment": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "spdxId",
+        "elementName",
+        "creationInfo",
+        "annotationType",
+        "comment"
+      ]
+    },
+    "creationInfo": {
+      "type": "object",
+      "properties": {
+        "created": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "creators": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "created",
+        "creators"
+      ]
+    },
+    "hash": {
+      "type": "object",
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "enum": [
+            "SHA1",
+            "SHA256",
+            "SHA512",
+            "MD5"
+          ]
+        },
+        "hashValue": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "algorithm",
+        "hashValue"
+      ]
+    },
+    "externalRef": {
+      "type": "object",
+      "properties": {
+        "refCategory": {
+          "type": "string",
+          "enum": [
+            "SECURITY",
+            "PACKAGE_MANAGER",
+            "PERSISTENT_ID",
+            "OTHER"
+          ]
+        },
+        "refType": {
+          "type": "string"
+        },
+        "refLocator": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "refCategory",
+        "refType",
+        "refLocator"
+      ]
+    },
+    "relationship": {
+      "type": "object",
+      "properties": {
+        "spdxElementId": {
+          "type": "string"
+        },
+        "relationshipType": {
+          "type": "string",
+          "enum": [
+            "DESCRIBES",
+            "CONTAINS",
+            "DEPENDS_ON",
+            "AFFECTED_BY",
+            "DESCRIBED_BY",
+            "DEPENDENCY_OF",
+            "OPTIONAL_DEPENDENCY_OF",
+            "PROVIDED_DEPENDENCY_OF",
+            "TEST_DEPENDENCY_OF",
+            "RUNTIME_DEPENDENCY_OF",
+            "EXAMPLE_OF",
+            "GENERATES",
+            "GENERATED_FROM",
+            "ANCESTOR_OF",
+            "DESCENDANT_OF",
+            "VARIANT_OF",
+            "DISTRIBUTION_ARTIFACT",
+            "PATCH_FOR",
+            "PATCH_APPLIED",
+            "COPY_OF",
+            "FILE_ADDED",
+            "FILE_DELETED",
+            "FILE_MODIFIED",
+            "EXPANDED_FROM_ARCHIVE",
+            "DYNAMIC_LINK",
+            "STATIC_LINK",
+            "DATA_FILE_OF",
+            "TEST_CASE_OF",
+            "BUILD_TOOL_OF",
+            "DEV_TOOL_OF",
+            "TEST_OF",
+            "TEST_TOOL_OF",
+            "DOCUMENTATION_OF",
+            "OPTIONAL_COMPONENT_OF",
+            "METAFILE_OF",
+            "PACKAGE_OF",
+            "AMENDS",
+            "PREREQUISITE_FOR",
+            "HAS_PREREQUISITE",
+            "RELATED_TO",
+            "AFFECTS",
+            "ANNOTATION_FOR"
+          ]
+        },
+        "relatedSpdxElementId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "spdxElementId",
+        "relationshipType",
+        "relatedSpdxElementId"
+      ]
+    }
+  }
+}
