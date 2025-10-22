@@ -44,9 +44,17 @@ pub struct SpdxElementMinimal {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub version_info: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>, // Description
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub purl: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub license_concluded: Option<String>, // SPDX expression
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub external_identifier: Option<Vec<SpdxExternalIdentifier>>, // For CPE
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub verified_using: Option<Vec<SpdxHash>>, // For hashes
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub software_primary_purpose: Option<String>, // For scope
     // We use IgnoredAny to quickly skip over fields we don't need
     #[serde(flatten)]
     pub extra: HashMap<String, IgnoredAny>,
@@ -80,7 +88,7 @@ pub struct JsonLdElement {
 }
 
 /// External identifier (CPE, PURL, etc.)
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SpdxExternalIdentifier {
     #[serde(rename = "type")]
@@ -90,7 +98,7 @@ pub struct SpdxExternalIdentifier {
 }
 
 /// Hash information from SPDX
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SpdxHash {
     #[serde(rename = "type")]
@@ -168,8 +176,12 @@ impl JsonLdElement {
             element_type: self.element_type.clone(),
             name: self.name.clone(),
             version_info: self.software_package_version.clone(),
+            summary: self.summary.clone().or_else(|| self.description.clone()),
             purl: None, // Would need to extract from externalIdentifier
             license_concluded: None, // Would need to extract from relationships
+            external_identifier: self.external_identifier.clone(),
+            verified_using: self.verified_using.clone(),
+            software_primary_purpose: self.software_primary_purpose.clone(),
             extra: HashMap::new(),
         }
     }
@@ -268,13 +280,51 @@ pub struct SpdxPackage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub version_info: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>, // Description
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub purl: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub license_concluded: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub external_identifier: Option<Vec<SpdxExternalIdentifier>>, // For CPE
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub verified_using: Option<Vec<SpdxHash>>, // For hashes
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub software_primary_purpose: Option<String>, // For scope mapping
 }
 
 impl SpdxPackage {
     pub fn from_cdx_component(comp: &crate::models_cdx::CdxComponent) -> Self {
+        // Convert CPE to SPDX externalIdentifier
+        let external_identifier = comp.cpe.as_ref().map(|cpe| {
+            vec![SpdxExternalIdentifier {
+                id_type: "ExternalIdentifier".to_string(),
+                external_identifier_type: Some("cpe23Type".to_string()),
+                identifier: Some(cpe.clone()),
+            }]
+        });
+
+        // Convert CycloneDX hashes to SPDX verified_using
+        let verified_using = comp.hashes.as_ref().map(|hashes| {
+            hashes
+                .iter()
+                .map(|h| SpdxHash {
+                    hash_type: "Hash".to_string(),
+                    algorithm: Some(h.alg.to_lowercase()),
+                    hash_value: Some(h.content.clone()),
+                })
+                .collect()
+        });
+
+        // Map CycloneDX scope to SPDX software_primaryPurpose
+        let software_primary_purpose = comp.scope.as_ref().map(|scope| {
+            match scope.as_str() {
+                "required" => "install",
+                "optional" => "optional",
+                _ => "other",
+            }.to_string()
+        });
+
         Self {
             spdx_id: format!("SPDXRef-{}", comp.bom_ref),
             element_type: if comp.component_type == "file" {
@@ -284,12 +334,16 @@ impl SpdxPackage {
             },
             name: comp.name.clone(),
             version_info: comp.version.clone(),
+            summary: comp.description.clone(),
             purl: comp.purl.clone(),
             license_concluded: comp
                 .licenses
                 .as_ref()
                 .and_then(|lics| lics.first())
                 .and_then(|l| l.expression.clone()),
+            external_identifier,
+            verified_using,
+            software_primary_purpose,
         }
     }
 }

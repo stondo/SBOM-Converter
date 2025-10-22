@@ -286,6 +286,39 @@ pub fn handle_spdx_element<W: Write>(
             // Map SPDX ID to bom-ref
             let bom_ref = extract_bom_ref(&element.spdx_id);
 
+            // Extract CPE from externalIdentifier
+            let cpe = element.external_identifier.as_ref()
+                .and_then(|ids| ids.iter()
+                    .find(|id| id.external_identifier_type.as_deref() == Some("cpe23Type"))
+                    .and_then(|id| id.identifier.clone()));
+
+            // Extract hashes from verified_using
+            let hashes = element.verified_using.as_ref().map(|verified| {
+                verified.iter()
+                    .filter_map(|h| {
+                        h.algorithm.as_ref().and_then(|alg| {
+                            h.hash_value.as_ref().map(|val| cdx::CdxHash {
+                                alg: match alg.to_lowercase().as_str() {
+                                    "sha256" | "sha-256" => "SHA-256".to_string(),
+                                    "sha1" | "sha-1" => "SHA-1".to_string(),
+                                    _ => alg.to_uppercase(),
+                                },
+                                content: val.clone(),
+                            })
+                        })
+                    })
+                    .collect::<Vec<_>>()
+            }).filter(|v| !v.is_empty());
+
+            // Map software_primaryPurpose to scope
+            let scope = element.software_primary_purpose.as_ref().map(|purpose| {
+                match purpose.as_str() {
+                    "install" => "required".to_string(),
+                    "optional" => "optional".to_string(),
+                    _ => "required".to_string(),
+                }
+            });
+
             let component = cdx::CdxComponent {
                 bom_ref,
                 component_type: if element.element_type == "SpdxPackage" || element.element_type == "software_Package" {
@@ -295,11 +328,11 @@ pub fn handle_spdx_element<W: Write>(
                 },
                 name: element.name.unwrap_or_else(|| "Unknown".to_string()),
                 version: element.version_info,
-                description: None, // TODO: Extract from SPDX
-                cpe: None, // TODO: Extract from externalIdentifier
+                description: element.summary,
+                cpe,
                 purl: element.purl,
-                scope: None, // TODO: Determine from purpose
-                hashes: None, // TODO: Extract from verifiedUsing
+                scope,
+                hashes,
                 licenses: element.license_concluded.map(|expr| {
                     vec![cdx::CdxLicenseChoice {
                         expression: Some(expr),
