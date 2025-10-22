@@ -1,6 +1,6 @@
 # SBOM Converter
 
-A high-performance, memory-efficient Rust tool for bidirectional conversion between **SPDX 3.0.1** and **CycloneDX 1.6** SBOM formats. Designed to handle extremely large SBOM files (tested with 2.9GB+ files) using streaming architecture with constant memory footprint.
+A high-performance, memory-efficient Rust tool for bidirectional conversion between **SPDX 3.0.1** and **CycloneDX 1.6** SBOM formats. Designed to handle extremely large SBOM files (tested with 2.5GB files containing nearly 2 million elements) using streaming architecture with constant memory footprint.
 
 **Supported Formats:**
 
@@ -481,16 +481,50 @@ When converting from SPDX 3.0.1 (especially JSON-LD format) to CycloneDX 1.6, th
 
 ### Processing Speed
 
-- Tested with **2.9GB SBOM files**
-- Streaming prevents memory overflow on large files
+- Tested with multi-gigabyte SBOM files (up to 2.5GB+)
+- Streaming architecture prevents memory overflow on massive files
 - Release build recommended for optimal performance
+- Multi-pass approach maintains efficiency even with millions of elements
 
-### Benchmarks (Example Hardware)
+### Benchmarks (Real-World Performance)
 
-**Large File Conversion:**
+**Production-Scale Yocto/OpenEmbedded Build - 2.5GB File:**
+
+```text
+File Size: 2.5GB SPDX 3.0.1 JSON-LD
+Input:    ~1.97 million elements (863 packages + 1,964,683 files)
+          3.98 million relationships
+          57 vulnerabilities
+
+Full Conversion (SPDX → CDX):
+  Output: 457MB CycloneDX 1.6 JSON
+  Time:   21.9 seconds
+  Peak Memory: ~2.5GB (for relationship indexing)
+  Throughput: 89,751 elements/sec
+  Components: 1,965,546 (all files included)
+
+Packages-Only Conversion (SPDX → CDX --packages-only):
+  Output: 387KB CycloneDX 1.6 JSON (1,182x smaller!)
+  Time:   19.8 seconds (10% faster)
+  Peak Memory: ~2.5GB
+  Throughput: 99,455 elements/sec
+  Components: 863 packages only
+  Dependencies: 361
+  Vulnerabilities: 57
+
+Performance Notes:
+  - 82% file size reduction (2.5GB → 457MB) for full conversion
+  - 99.98% file size reduction (2.5GB → 387KB) with --packages-only
+  - Consistent ~100K elements/sec throughput on large files
+  - Memory usage scales with relationship count, not file size
+  - 3-pass streaming architecture maintains constant memory for element processing
 ```
+
+**Medium File Conversion:**
+
+```text
 File Size: 5.4MB SPDX JSON-LD (Yocto/OpenEmbedded)
-Input: 863 packages, 2368 files, 57 vulnerabilities, 456 VEX assessments
+Input: 863 packages, 2368 files, 57 vulnerabilities
 Output: 881KB CycloneDX 1.6 JSON (full conversion)
         325KB CycloneDX BOM + 62KB VEX file (with --packages-only --split-vex)
 Conversion: SPDX → CDX (3-pass)
@@ -504,15 +538,6 @@ Data Extracted:
   - 188 CPE identifiers
   - 189 descriptions
   - 57 vulnerabilities with VEX analysis
-  - 23 vulnerabilities with affected component URNs
-```
-
-**Very Large File Conversion:**
-```
-File Size: 2.9GB
-Conversion: SPDX → CDX
-Time: ~45 seconds
-Peak Memory: ~850MB (for relationship index)
 ```
 
 ## Error Handling
