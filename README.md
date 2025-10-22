@@ -30,7 +30,7 @@ Both methods maintain **O(1) memory complexity** relative to file size using Ser
 ## Installation
 
 ### Prerequisites
-- Rust 1.70+ (2021 edition)
+- Rust 1.85+ (2024 edition)
 - Cargo
 
 ### Build from Source
@@ -247,12 +247,17 @@ Contributions are welcome! Areas for improvement:
 
 ## License
 
-[Specify your license here]
+Licensed under either of:
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.
+
+### Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
 
 ## Acknowledgments
 
 Built with Rust's powerful streaming capabilities using the Serde ecosystem.
-
-## Contact
-
-[Your contact information or project links]
