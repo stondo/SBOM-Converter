@@ -37,8 +37,8 @@ Both methods maintain **O(1) memory complexity** relative to file size using Ser
 
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd sbom-converter
+git clone https://github.com/stondo/SBOM-Converter.git
+cd SBOM-Converter
 
 # Build release version (optimized)
 cargo build --release
