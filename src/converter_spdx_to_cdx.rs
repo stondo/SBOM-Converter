@@ -117,13 +117,11 @@ fn pass_2_convert_and_write<R: Read, W: Write>(
     for (spdx_id, relationships) in index.iter() {
         let mut depends_on = Vec::new();
         for rel in relationships {
-            if rel.relationship_type == "DEPENDS_ON" {
-                // Map SPDX ID to bom-ref (strip SPDXRef- prefix if present)
-                let bom_ref = rel
-                    .related_spdx_element
-                    .strip_prefix("SPDXRef-")
-                    .unwrap_or(&rel.related_spdx_element)
-                    .to_string();
+            // Support both simple JSON (DEPENDS_ON) and JSON-LD (dependsOn, contains) formats
+            let rel_type = rel.relationship_type.as_str();
+            if rel_type == "DEPENDS_ON" || rel_type == "dependsOn" || rel_type == "contains" {
+                // Map SPDX ID to bom-ref using same extraction logic
+                let bom_ref = extract_bom_ref(&rel.related_spdx_element);
                 depends_on.push(bom_ref);
             }
         }
@@ -135,10 +133,7 @@ fn pass_2_convert_and_write<R: Read, W: Write>(
             first_dep = false;
 
             // Map SPDX ID to bom-ref for the dependency ref
-            let dep_ref = spdx_id
-                .strip_prefix("SPDXRef-")
-                .unwrap_or(spdx_id)
-                .to_string();
+            let dep_ref = extract_bom_ref(spdx_id);
 
             let dep = cdx::CdxDependency {
                 dep_ref,
@@ -166,17 +161,14 @@ pub fn handle_spdx_element<W: Write>(
     _first_vulnerability: &mut bool,
 ) -> Result<(), std::io::Error> {
     match element.element_type.as_str() {
-        "SpdxPackage" | "SpdxFile" => {
+        // Support both simple JSON and JSON-LD type names
+        "SpdxPackage" | "software_Package" | "SpdxFile" | "software_File" => {
             // Map SPDX ID to bom-ref
-            let bom_ref = element
-                .spdx_id
-                .strip_prefix("SPDXRef-")
-                .unwrap_or(&element.spdx_id)
-                .to_string();
+            let bom_ref = extract_bom_ref(&element.spdx_id);
 
             let component = cdx::CdxComponent {
                 bom_ref,
-                component_type: if element.element_type == "SpdxPackage" {
+                component_type: if element.element_type == "SpdxPackage" || element.element_type == "software_Package" {
                     "library".to_string()
                 } else {
                     "file".to_string()
@@ -202,7 +194,7 @@ pub fn handle_spdx_element<W: Write>(
             writer.write_all(b"    ")?;
             serde_json::to_writer(&mut *writer, &component)?;
         }
-        "SpdxVulnerability" => {
+        "SpdxVulnerability" | "security_Vulnerability" => {
             // For now, we'll just skip them
             warn!(
                 "Skipping vulnerability conversion (not implemented in this pass): {:?}",
@@ -215,4 +207,31 @@ pub fn handle_spdx_element<W: Write>(
     }
 
     Ok(())
+}
+
+/// Extract a usable bom-ref from an SPDX ID (handles both simple format and JSON-LD URIs)
+fn extract_bom_ref(spdx_id: &str) -> String {
+    if spdx_id.starts_with("http://") || spdx_id.starts_with("https://") {
+        // JSON-LD URI format: use a hash of the full URI to ensure uniqueness
+        // This prevents collisions from URIs ending in common segments like "recipe"
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        
+        let mut hasher = DefaultHasher::new();
+        spdx_id.hash(&mut hasher);
+        let hash = hasher.finish();
+        
+        // Also try to extract a meaningful name component
+        let name_part = spdx_id.rsplit('/').nth(0)
+            .filter(|s| !s.is_empty() && s.chars().any(|c| c.is_alphabetic()))
+            .unwrap_or("element");
+            
+        format!("{}-{:x}", name_part, hash)
+    } else {
+        // Simple JSON format: remove SPDXRef- prefix
+        spdx_id
+            .strip_prefix("SPDXRef-")
+            .unwrap_or(spdx_id)
+            .to_string()
+    }
 }

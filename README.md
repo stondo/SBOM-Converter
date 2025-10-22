@@ -4,14 +4,20 @@ A high-performance, memory-efficient Rust tool for bidirectional conversion betw
 
 **Supported Formats:**
 
-- **SPDX:** Version 3.0.1 (JSON only)
+- **SPDX:** Version 3.0.1 (both simple JSON and JSON-LD/RDF formats)
 - **CycloneDX:** Version 1.6 (JSON only)
+
+**Validated With:**
+
+- OpenEmbedded/Yocto SPDX 3.0.1 JSON-LD files (863 packages, 2368 files, 1771 relationships)
+- Real-world SBOMs from embedded Linux distributions
 
 ## Features
 
 - 🔄 **Bidirectional Conversion**: Convert between SPDX and CycloneDX formats
 - 🚀 **Streaming Architecture**: Handles multi-gigabyte files with constant memory usage
 - ⚡ **High Performance**: Multi-pass optimization for large-scale SBOMs
+- 📋 **JSON-LD Support**: Full support for SPDX 3.0.1 JSON-LD/RDF format (OpenEmbedded, Yocto)
 - ✅ **Schema Validation**: Optional JSON schema validation against official SPDX/CDX schemas
 - 🛡️ **Robust Error Handling**: Comprehensive error messages and validation
 - 📊 **Verbose Logging**: Optional detailed output for debugging and monitoring
@@ -116,6 +122,52 @@ The tool supports optional JSON schema validation. Place the following schema fi
 - `cdx_1.6.schema.json` - CycloneDX 1.6 JSON schema
 
 Schemas are automatically loaded when the `--validate` flag is used.
+
+## SPDX 3.0.1 Format Support
+
+The converter supports both SPDX 3.0.1 formats:
+
+### Simple JSON Format
+
+Traditional format with flat `elements` and `relationships` arrays:
+
+```json
+{
+  "spdxVersion": "SPDX-3.0",
+  "elements": [
+    {"spdxId": "SPDXRef-Package1", "type": "SpdxPackage", "name": "example"}
+  ],
+  "relationships": [
+    {"spdxElementId": "SPDXRef-Package1", "relationshipType": "DEPENDS_ON", "relatedSpdxElement": "SPDXRef-Package2"}
+  ]
+}
+```
+
+### JSON-LD/RDF Format
+
+Semantic web format with `@context` and `@graph` (used by OpenEmbedded, Yocto):
+
+```json
+{
+  "@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld",
+  "@graph": [
+    {
+      "type": "software_Package",
+      "spdxId": "http://spdx.org/spdxdocs/example/package/1",
+      "name": "example",
+      "software_packageVersion": "1.0.0"
+    },
+    {
+      "type": "Relationship",
+      "from": "http://spdx.org/spdxdocs/example/package/1",
+      "relationshipType": "dependsOn",
+      "to": ["http://spdx.org/spdxdocs/example/package/2"]
+    }
+  ]
+}
+```
+
+The converter automatically detects the format and processes it appropriately. JSON-LD URIs are hashed to create unique CycloneDX bom-refs.
 
 ## Performance Characteristics
 
@@ -254,6 +306,7 @@ cargo clippy
 - **CycloneDX Version:** Only CycloneDX 1.6 is supported (earlier versions are not supported)
 - **Relationship Mapping:** Some complex SPDX relationship types may be mapped in a lossy manner
 - **External References:** External references and attestations may have limited mapping
+- **VEX Support:** Vulnerability Exchange (VEX) documents are partially supported (vulnerabilities detected but not fully converted)
 
 ## Contributing
 
