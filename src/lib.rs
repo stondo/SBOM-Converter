@@ -38,6 +38,7 @@ pub struct Config {
     pub validate: bool,
     pub split_vex: bool,
     pub packages_only: bool,
+    pub skip_jsonld_validation: bool,
 }
 
 /// The main entry point for the conversion logic.
@@ -67,7 +68,7 @@ pub fn run(config: Config) -> Result<(), ConverterError> {
             }
         };
 
-        schema::validate_json_schema(schema_str, &config.input_file)?;
+        schema::validate_json_schema(schema_str, &config.input_file, config.skip_jsonld_validation)?;
         info!(
             "Validation passed successfully. (Took {:.2?})",
             schema_start.elapsed()

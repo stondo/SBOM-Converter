@@ -171,16 +171,44 @@ The tool supports optional JSON schema validation using the `--validate` flag. T
 
 | Format | Validation Type | Details |
 |--------|----------------|---------|
-| **CycloneDX 1.6** | Full Schema Validation | ✅ All fields, types, and constraints validated |
-| **SPDX 3.0.1 Simple JSON** | Full Schema Validation | ✅ All fields, types, and constraints validated |
-| **SPDX 3.0.1 JSON-LD** | Skipped | ⚠️ JSON Schema doesn't apply to RDF serialization |
+| **CycloneDX 1.6** | Full Schema Validation | All fields, types, and constraints validated |
+| **SPDX 3.0.1 Simple JSON** | Full Schema Validation | All fields, types, and constraints validated |
+| **SPDX 3.0.1 JSON-LD** | Structural Validation | Validates @context, @graph, element structure. Does not perform full RDF semantic validation. Use `--skip-jsonld-validation` to skip. |
 
-#### Why is JSON-LD validation skipped?
+#### JSON-LD Structural Validation
 
-JSON-LD is an RDF (Resource Description Framework) serialization format. The bundled JSON Schema only validates the simple JSON structure, not RDF semantics.
+For SPDX JSON-LD format (used by Yocto/OpenEmbedded), the tool performs structural validation by default:
 
-- **The conversion process validates structure implicitly** - If the JSON-LD is malformed, the conversion will fail with clear error messages
-- **For semantic RDF validation**, use dedicated tools like [pyshacl](https://github.com/RDFLib/pySHACL) with the [SPDX 3.0 SHACL shapes](https://spdx.github.io/spdx-spec/v3.0/rdf/spdx-model.ttl)
+- ✅ Verifies `@context` is present and valid (string, array, or object)
+- ✅ Verifies `@graph` is present and is an array
+- ✅ Validates each element in `@graph` is a proper object
+- ✅ Reports statistics on `@type` and `@id` usage
+
+**Performance note:** With optimized builds (release mode), structural validation adds minimal overhead (~0.2-0.5% on large files). Most of the "validation time" is actually JSON parsing, which is unavoidable.
+
+**Skip structural validation:** Use the `--skip-jsonld-validation` flag if you want to skip the structural checks entirely:
+
+```bash
+./target/release/sbom-converter \
+  --input large-yocto-file.spdx.json \
+  --output output.cdx.json \
+  --direction spdx-to-cdx \
+  --validate \
+  --skip-jsonld-validation
+```
+
+**Why not full RDF validation?** JSON-LD is a serialization of RDF (Resource Description Framework). Full semantic validation would require RDF/SHACL tools. The structural validation catches malformed JSON-LD files while being very fast. For complete semantic validation, use tools like [pyshacl](https://github.com/RDFLib/pySHACL) with the [SPDX 3.0 SHACL shapes](https://spdx.github.io/spdx-spec/v3.0/rdf/spdx-model.ttl).
+
+**Example validation output for JSON-LD:**
+
+```text
+[INFO ] Detected JSON-LD format. Performing structural validation...
+[INFO ] JSON-LD structural validation passed:
+[INFO ]   - 7241 elements in @graph
+[INFO ]   - 0 elements with @type
+[INFO ]   - 383 elements with @id
+[INFO ] Validation passed successfully. (Took 40.15ms)
+```
 
 ### Validation Examples
 
@@ -199,20 +227,20 @@ JSON-LD is an RDF (Resource Description Framework) serialization format. The bun
   --direction spdx-to-cdx \
   --validate
 
-# SPDX JSON-LD validation is skipped (RDF format)
+# Validate SPDX JSON-LD (structural validation)
 ./target/release/sbom-converter \
   --input sbom-jsonld.spdx.json \
   --output sbom.cdx.json \
   --direction spdx-to-cdx \
   --validate
-```
 
-**Output for JSON-LD files:**
-
-```text
-[INFO ] Detected JSON-LD format. Skipping schema validation (not applicable to RDF serialization).
-[INFO ] Note: The conversion process will validate structure implicitly. For semantic validation, use RDF/SHACL tools.
-[INFO ] Validation passed successfully. (Took 280.93ms)
+# Validate SPDX JSON-LD but skip structural checks (fastest)
+./target/release/sbom-converter \
+  --input large-yocto.spdx.json \
+  --output sbom.cdx.json \
+  --direction spdx-to-cdx \
+  --validate \
+  --skip-jsonld-validation
 ```
 
 **Note:** Validation is optional. Files that fail validation may still convert successfully if they contain the necessary data for conversion.

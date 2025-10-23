@@ -29,6 +29,9 @@ struct Cli {
 
     #[arg(long, help = "Only convert packages/libraries, skip individual files (SPDX→CDX only)")]
     packages_only: bool,
+
+    #[arg(long, help = "Skip JSON-LD structural validation (SPDX JSON-LD only)")]
+    skip_jsonld_validation: bool,
 }
 
 #[derive(Debug, Clone, ValueEnum)]
@@ -70,6 +73,7 @@ fn run_app() -> Result<(), ConverterError> {
         validate: cli.validate,
         split_vex: cli.split_vex,
         packages_only: cli.packages_only,
+        skip_jsonld_validation: cli.skip_jsonld_validation,
     };
 
     sbom_converter::run(config)
