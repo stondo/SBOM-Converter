@@ -2,11 +2,22 @@
 
 # Example SBOM files (may contain sensitive data)
 *.spdx.json
+*.cdx.json
 bom.json
 sbom-cyclonedx.json
 sbom-cyclonedx-packages-only.json
 *.vex.json
 vex.json
+
+# Test output files
+*.log
+large-test-*.json
+*-test-*.json
+roundtrip-*.json
+
+# Internal documentation (not for public repo)
+BENCHMARK_RESULTS.md
+DEVELOPMENT_NOTES.md
 
 # Keep only schema files
 !schemas/*.json

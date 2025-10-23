@@ -14,7 +14,7 @@ pub mod schema;
 
 use clap::ValueEnum;
 use errors::ConverterError;
-use log::{info, warn};
+use log::info;
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use std::path::PathBuf;
@@ -60,23 +60,18 @@ pub fn run(config: Config) -> Result<(), ConverterError> {
                 include_str!("../schemas/cdx_1.6.schema.json")
             }
             ConversionDirection::SpdxToCdx => {
-                // We are reading SPDX, but we don't have its schema bundled.
-                // In a real app, we'd bundle spdx_3.0.schema.json as well.
-                // For now, we'll just log a warning.
-                warn!("SPDX validation is not yet implemented.");
-                // As a placeholder, let's pretend we did.
-                // In a real app, you'd load the SPDX schema.
-                "" // Empty string will skip validation
+                // We are reading SPDX, so validate against SPDX 3.0.1 schema
+                // Note: SPDX 3.0.1 schema is strict and may reject files that
+                // convert successfully. Use --validate flag judiciously.
+                include_str!("../schemas/spdx_3.0.1.schema.json")
             }
         };
 
-        if !schema_str.is_empty() {
-            schema::validate_json_schema(schema_str, &config.input_file)?;
-            info!(
-                "Validation passed successfully. (Took {:.2?})",
-                schema_start.elapsed()
-            );
-        }
+        schema::validate_json_schema(schema_str, &config.input_file)?;
+        info!(
+            "Validation passed successfully. (Took {:.2?})",
+            schema_start.elapsed()
+        );
     } else {
         info!("Skipping pre-validation.");
     }
