@@ -162,12 +162,70 @@ This produces two files:
 
 ## Schema Validation
 
-The tool supports optional JSON schema validation. Place the following schema files in the `schemas/` directory:
+The tool supports optional JSON schema validation using the `--validate` flag. The schema files are bundled with the tool:
 
-- `spdx_3.0.1.schema.json` - SPDX 3.0.1 JSON schema
-- `cdx_1.6.schema.json` - CycloneDX 1.6 JSON schema
+- `schemas/spdx_3.0.1.schema.json` - SPDX 3.0.1 JSON schema (simple JSON format)
+- `schemas/cdx_1.6.schema.json` - CycloneDX 1.6 JSON schema
 
-Schemas are automatically loaded when the `--validate` flag is used.
+### Validation Behavior
+
+#### Simple JSON Format (Full Validation)
+
+For SPDX simple JSON format and CycloneDX files, the tool performs complete schema validation:
+
+- ✅ Validates all required fields
+- ✅ Validates data types and structures
+- ✅ Validates enum values and constraints
+- ✅ Reports detailed validation errors
+
+#### JSON-LD Format (Structural Validation)
+
+For SPDX JSON-LD format (used by Yocto/OpenEmbedded), the tool performs basic structural validation:
+
+- ✅ Verifies `@context` is present and valid (string, array, or object)
+- ✅ Verifies `@graph` is present and is an array
+- ✅ Validates each element in `@graph` is a proper object
+- ✅ Reports statistics on `@type` and `@id` usage
+- ⚠️ Does **not** perform full RDF semantic validation
+
+**Why different validation?** JSON-LD is a serialization of RDF (Resource Description Framework). The bundled JSON Schema only validates the simple JSON format structure. Full semantic validation of JSON-LD would require RDF/SHACL tools, which is beyond the scope of this tool. However, the structural validation catches malformed JSON-LD files, and the conversion process itself validates that the data is usable.
+
+**Example validation output for JSON-LD:**
+
+```text
+[INFO ] Detected JSON-LD format. Performing basic structural validation...
+[INFO ] JSON-LD structural validation passed:
+[INFO ]   - 7241 elements in @graph
+[INFO ]   - 0 elements with @type
+[INFO ]   - 383 elements with @id
+```
+
+### Validation Examples
+
+```bash
+# Validate CycloneDX file (full schema validation)
+./target/release/sbom-converter \
+  --input sbom.cdx.json \
+  --output sbom.spdx.json \
+  --direction cdx-to-spdx \
+  --validate
+
+# Validate SPDX simple JSON (full schema validation)
+./target/release/sbom-converter \
+  --input sbom-simple.spdx.json \
+  --output sbom.cdx.json \
+  --direction spdx-to-cdx \
+  --validate
+
+# Validate SPDX JSON-LD (structural validation)
+./target/release/sbom-converter \
+  --input sbom-jsonld.spdx.json \
+  --output sbom.cdx.json \
+  --direction spdx-to-cdx \
+  --validate
+```
+
+**Note:** Validation is optional. Files that fail validation may still convert successfully if they contain the necessary data for conversion.
 
 ## SPDX 3.0.1 Format Support
 
