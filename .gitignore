@@ -19,6 +19,7 @@ roundtrip-*.json
 BENCHMARK_RESULTS.md
 DEVELOPMENT_NOTES.md
 XML_SUPPORT_ANALYSIS.md
+PARALLEL_PROCESSING_ANALYSIS.md
 
 # Keep only schema files
 !schemas/*.json
