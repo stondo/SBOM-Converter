@@ -169,36 +169,18 @@ The tool supports optional JSON schema validation using the `--validate` flag. T
 
 ### Validation Behavior
 
-#### Simple JSON Format (Full Validation)
+| Format | Validation Type | Details |
+|--------|----------------|---------|
+| **CycloneDX 1.6** | Full Schema Validation | ✅ All fields, types, and constraints validated |
+| **SPDX 3.0.1 Simple JSON** | Full Schema Validation | ✅ All fields, types, and constraints validated |
+| **SPDX 3.0.1 JSON-LD** | Skipped | ⚠️ JSON Schema doesn't apply to RDF serialization |
 
-For SPDX simple JSON format and CycloneDX files, the tool performs complete schema validation:
+#### Why is JSON-LD validation skipped?
 
-- ✅ Validates all required fields
-- ✅ Validates data types and structures
-- ✅ Validates enum values and constraints
-- ✅ Reports detailed validation errors
+JSON-LD is an RDF (Resource Description Framework) serialization format. The bundled JSON Schema only validates the simple JSON structure, not RDF semantics.
 
-#### JSON-LD Format (Structural Validation)
-
-For SPDX JSON-LD format (used by Yocto/OpenEmbedded), the tool performs basic structural validation:
-
-- ✅ Verifies `@context` is present and valid (string, array, or object)
-- ✅ Verifies `@graph` is present and is an array
-- ✅ Validates each element in `@graph` is a proper object
-- ✅ Reports statistics on `@type` and `@id` usage
-- ⚠️ Does **not** perform full RDF semantic validation
-
-**Why different validation?** JSON-LD is a serialization of RDF (Resource Description Framework). The bundled JSON Schema only validates the simple JSON format structure. Full semantic validation of JSON-LD would require RDF/SHACL tools, which is beyond the scope of this tool. However, the structural validation catches malformed JSON-LD files, and the conversion process itself validates that the data is usable.
-
-**Example validation output for JSON-LD:**
-
-```text
-[INFO ] Detected JSON-LD format. Performing basic structural validation...
-[INFO ] JSON-LD structural validation passed:
-[INFO ]   - 7241 elements in @graph
-[INFO ]   - 0 elements with @type
-[INFO ]   - 383 elements with @id
-```
+- **The conversion process validates structure implicitly** - If the JSON-LD is malformed, the conversion will fail with clear error messages
+- **For semantic RDF validation**, use dedicated tools like [pyshacl](https://github.com/RDFLib/pySHACL) with the [SPDX 3.0 SHACL shapes](https://spdx.github.io/spdx-spec/v3.0/rdf/spdx-model.ttl)
 
 ### Validation Examples
 
@@ -217,12 +199,20 @@ For SPDX JSON-LD format (used by Yocto/OpenEmbedded), the tool performs basic st
   --direction spdx-to-cdx \
   --validate
 
-# Validate SPDX JSON-LD (structural validation)
+# SPDX JSON-LD validation is skipped (RDF format)
 ./target/release/sbom-converter \
   --input sbom-jsonld.spdx.json \
   --output sbom.cdx.json \
   --direction spdx-to-cdx \
   --validate
+```
+
+**Output for JSON-LD files:**
+
+```text
+[INFO ] Detected JSON-LD format. Skipping schema validation (not applicable to RDF serialization).
+[INFO ] Note: The conversion process will validate structure implicitly. For semantic validation, use RDF/SHACL tools.
+[INFO ] Validation passed successfully. (Took 280.93ms)
 ```
 
 **Note:** Validation is optional. Files that fail validation may still convert successfully if they contain the necessary data for conversion.
