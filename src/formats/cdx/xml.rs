@@ -4,10 +4,10 @@ use crate::errors::ConverterError;
 use crate::formats::cdx::CdxDocument;
 use quick_xml::de::from_reader;
 use quick_xml::se::to_string;
-use std::io::{Read, Write};
+use std::io::{BufRead, Write};
 
 /// Parse CycloneDX from XML
-pub fn parse<R: Read>(reader: R) -> Result<CdxDocument, ConverterError> {
+pub fn parse<R: BufRead>(reader: R) -> Result<CdxDocument, ConverterError> {
     from_reader(reader).map_err(|e| {
         ConverterError::ParseError(format!("Failed to parse CycloneDX XML: {}", e))
     })

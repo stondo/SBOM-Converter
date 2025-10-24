@@ -3,6 +3,9 @@
 //! This module provides types and utilities for detecting and handling
 //! different SBOM file formats (JSON, XML, etc.).
 
+pub mod cdx;
+pub mod spdx;
+
 use crate::errors::ConverterError;
 use std::path::Path;
 
