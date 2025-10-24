@@ -68,6 +68,7 @@ Both methods maintain **O(1) memory complexity** relative to file size using Ser
 Download the latest release for your platform from the [Releases page](https://github.com/stondo/SBOM-Converter/releases).
 
 Available platforms:
+
 - Linux (x86_64)
 - macOS (x86_64, ARM64)
 - Windows (x86_64)
