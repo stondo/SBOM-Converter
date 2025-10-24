@@ -276,7 +276,7 @@ fn test_packages_only_and_jsonld_format() {
     // that work with real Yocto/OpenEmbedded output. These tests verify the
     // code compiles and runs without crashing, but full JSON-LD support requires
     // more complex test fixtures that match actual Yocto output structure.
-    
+
     let dir = tempdir().unwrap();
     let input_path = dir.path().join("simple_spdx.json");
     let output_path = dir.path().join("output.cdx.json");
@@ -322,12 +322,10 @@ fn test_packages_only_and_jsonld_format() {
     let output_content = fs::read_to_string(output_path).unwrap();
     let output_json: Value = serde_json::from_str(&output_content).unwrap();
     let components = output_json["components"].as_array().unwrap();
-    
+
     // Should have at least 1 component
     assert!(components.len() >= 1);
 }
-
-
 
 #[test]
 fn test_split_vex_flag() {
@@ -398,16 +396,16 @@ fn test_split_vex_flag() {
     let output_content = fs::read_to_string(&output_path).unwrap();
     let output_json: Value = serde_json::from_str(&output_content).unwrap();
     let components = output_json["components"].as_array().unwrap();
-    
+
     // Should have at least 1 package
     assert!(components.len() >= 1);
     assert_eq!(components[0]["name"], "Vulnerable Package");
-    
+
     // VEX file should exist if vulnerabilities were split
     if vex_path.exists() {
         let vex_content = fs::read_to_string(&vex_path).unwrap();
         let vex_json: Value = serde_json::from_str(&vex_content).unwrap();
-        
+
         // VEX file should have vulnerabilities
         let vex_vulns = vex_json["vulnerabilities"].as_array();
         assert!(vex_vulns.is_some());
@@ -416,14 +414,12 @@ fn test_split_vex_flag() {
     // This test verifies the flag doesn't crash the converter
 }
 
-
-
 #[test]
 fn test_jsonld_format_parsing() {
     // Note: Full JSON-LD parsing requires complex test fixtures matching
     // actual Yocto/OpenEmbedded output. This test verifies the converter
     // handles JSON-LD input without crashing.
-    
+
     let dir = tempdir().unwrap();
     let input_path = dir.path().join("test_jsonld.spdx.json");
     let output_path = dir.path().join("output_from_jsonld.cdx.json");
@@ -460,11 +456,10 @@ fn test_jsonld_format_parsing() {
     assert!(output_path.exists());
     let output_content = fs::read_to_string(output_path).unwrap();
     let output_json: Value = serde_json::from_str(&output_content).unwrap();
-    
+
     // Should have bomFormat even if no components
     assert_eq!(output_json["bomFormat"], "CycloneDX");
 }
-
 
 #[test]
 fn test_metadata_preservation_round_trip() {
@@ -531,17 +526,20 @@ fn test_metadata_preservation_round_trip() {
     // Verify metadata was preserved in SPDX
     assert_eq!(pkg["summary"], "A package with lots of metadata");
     assert_eq!(pkg["purl"], "pkg:maven/com.example/rich-package@4.0.0");
-    
+
     // Verify CPE was mapped to externalIdentifier
     let ext_ids = pkg["externalIdentifier"].as_array().unwrap();
     assert_eq!(ext_ids.len(), 1);
     assert_eq!(ext_ids[0]["externalIdentifierType"], "cpe23Type");
-    assert_eq!(ext_ids[0]["identifier"], "cpe:2.3:a:example:rich-package:4.0.0");
-    
+    assert_eq!(
+        ext_ids[0]["identifier"],
+        "cpe:2.3:a:example:rich-package:4.0.0"
+    );
+
     // Verify hashes were mapped to verifiedUsing
     let hashes = pkg["verifiedUsing"].as_array().unwrap();
     assert_eq!(hashes.len(), 2);
-    
+
     // Note: software_primaryPurpose might be present in memory but not serialized to JSON
     // We'll verify scope round-trips through SPDX->CDX conversion below
 
@@ -560,26 +558,29 @@ fn test_metadata_preservation_round_trip() {
     let output_json: Value = serde_json::from_str(&output_content).unwrap();
     let components = output_json["components"].as_array().unwrap();
     assert_eq!(components.len(), 1);
-    
+
     let output_pkg = &components[0];
     assert_eq!(output_pkg["name"], "Rich Package");
     assert_eq!(output_pkg["version"], "4.0.0");
     assert_eq!(output_pkg["description"], "A package with lots of metadata");
-    assert_eq!(output_pkg["purl"], "pkg:maven/com.example/rich-package@4.0.0");
+    assert_eq!(
+        output_pkg["purl"],
+        "pkg:maven/com.example/rich-package@4.0.0"
+    );
     assert_eq!(output_pkg["cpe"], "cpe:2.3:a:example:rich-package:4.0.0");
-    
+
     // Verify hashes round-tripped correctly
     let output_hashes = output_pkg["hashes"].as_array().unwrap();
     assert_eq!(output_hashes.len(), 2);
     assert_eq!(output_hashes[0]["alg"], "SHA-256");
     assert_eq!(output_hashes[1]["alg"], "SHA-1");
-    
+
     // Scope may or may not round-trip depending on implementation
     // At minimum, verify the core metadata (CPE, hashes, description) round-trips
     if !output_pkg["scope"].is_null() {
         assert_eq!(output_pkg["scope"], "required");
     }
-    
+
     // Verify license was preserved
     assert_eq!(output_pkg["licenses"][0]["expression"], "Apache-2.0");
 }

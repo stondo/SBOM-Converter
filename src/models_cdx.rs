@@ -84,8 +84,8 @@ pub struct CdxComponent {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct CdxHash {
-    pub alg: String,      // "SHA-256", "SHA-1", "MD5", etc.
-    pub content: String,  // hex-encoded hash value
+    pub alg: String,     // "SHA-256", "SHA-1", "MD5", etc.
+    pub content: String, // hex-encoded hash value
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -156,7 +156,7 @@ pub struct CdxAnalysis {
 #[derive(Deserialize, Serialize, Debug)]
 pub struct CdxAffects {
     #[serde(rename = "ref")]
-    pub bom_ref: String,  // URN reference to affected component
+    pub bom_ref: String, // URN reference to affected component
 }
 
 // --- Streaming Visitor Logic ---

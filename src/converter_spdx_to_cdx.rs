@@ -22,10 +22,10 @@ pub type SpdxRelationshipIndex = HashMap<String, Vec<spdx::SpdxRelationshipMinim
 /// Vulnerability data extracted from Pass 3
 #[derive(Debug)]
 pub struct VulnerabilityData {
-    pub id: String, // CVE ID
-    pub source_id: String, // SPDX ID for the vulnerability
+    pub id: String,           // CVE ID
+    pub source_id: String,    // SPDX ID for the vulnerability
     pub affects: Vec<String>, // SPDX IDs of affected components
-    pub state: String, // "fixed", "not_affected", etc.
+    pub state: String,        // "fixed", "not_affected", etc.
 }
 
 /// Main function for SPDX -> CDX conversion.
@@ -60,7 +60,14 @@ pub fn convert_spdx_to_cdx<R: Read, W: Write>(
     let input_reader_pass_2 = BufReader::new(input_file_pass_2);
 
     // Pass 2 writes components and dependencies, returns serial_number for Pass 3
-    let serial_number = pass_2_convert_and_write(input_reader_pass_2, &mut output_writer, &index, progress.clone(), packages_only, split_vex)?;
+    let serial_number = pass_2_convert_and_write(
+        input_reader_pass_2,
+        &mut output_writer,
+        &index,
+        progress.clone(),
+        packages_only,
+        split_vex,
+    )?;
 
     info!(
         "[PASS 2/3] Components pass complete. (Took {:.2?})",
@@ -79,18 +86,27 @@ pub fn convert_spdx_to_cdx<R: Read, W: Write>(
         // Close main BOM file without vulnerabilities
         output_writer.write_all(b"\n}\n")?;
         output_writer.flush()?;
-        
+
         // Create separate VEX file
         let vex_path = input_path.with_extension("").with_extension("vex.json");
-        info!("Writing vulnerabilities to separate VEX file: {:?}", vex_path);
-        let vex_file = File::create(&vex_path)
-            .map_err(|e| ConverterError::Io(e, format!("Failed to create VEX file: {:?}", vex_path)))?;
+        info!(
+            "Writing vulnerabilities to separate VEX file: {:?}",
+            vex_path
+        );
+        let vex_file = File::create(&vex_path).map_err(|e| {
+            ConverterError::Io(e, format!("Failed to create VEX file: {:?}", vex_path))
+        })?;
         let mut vex_writer = BufWriter::new(vex_file);
-        
+
         pass_3_extract_vulnerabilities(input_reader_pass_3, &mut vex_writer, &serial_number, true)?;
     } else {
         // Write vulnerabilities to main file
-        pass_3_extract_vulnerabilities(input_reader_pass_3, &mut output_writer, &serial_number, false)?;
+        pass_3_extract_vulnerabilities(
+            input_reader_pass_3,
+            &mut output_writer,
+            &serial_number,
+            false,
+        )?;
     }
 
     info!(
@@ -205,7 +221,7 @@ fn pass_2_convert_and_write<R: Read, W: Write>(
             serde_json::to_writer(&mut *writer, &dep)?;
         }
     }
-    
+
     // Close dependencies array
     if split_vex {
         // No comma - we'll close the JSON right after this
@@ -217,7 +233,7 @@ fn pass_2_convert_and_write<R: Read, W: Write>(
 
     // Don't finalize JSON yet - Pass 3 may add vulnerabilities and close
     writer.flush()?;
-    Ok(serial_number)  // Return serial_number for Pass 3
+    Ok(serial_number) // Return serial_number for Pass 3
 }
 
 /// Pass 3: Extracts vulnerabilities and VEX assessments from JSON-LD @graph.
@@ -234,7 +250,7 @@ fn pass_3_extract_vulnerabilities<R: Read, W: Write>(
         writer.write_all(b"  \"specVersion\": \"1.6\",\n")?;
         writer.write_all(format!("  \"serialNumber\": \"{}\",\n", serial_number).as_bytes())?;
         writer.write_all(b"  \"version\": 1,\n")?;
-        
+
         // Add metadata
         let metadata = cdx::CdxMetadata {
             timestamp: chrono::Utc::now().to_rfc3339(),
@@ -250,7 +266,7 @@ fn pass_3_extract_vulnerabilities<R: Read, W: Write>(
         serde_json::to_writer(&mut *writer, &metadata)?;
         writer.write_all(b",\n")?;
     }
-    
+
     writer.write_all(b"  \"vulnerabilities\": [\n")?;
 
     let first_vuln = true;
@@ -287,41 +303,51 @@ pub fn handle_spdx_element<W: Write>(
             let bom_ref = extract_bom_ref(&element.spdx_id);
 
             // Extract CPE from externalIdentifier
-            let cpe = element.external_identifier.as_ref()
-                .and_then(|ids| ids.iter()
+            let cpe = element.external_identifier.as_ref().and_then(|ids| {
+                ids.iter()
                     .find(|id| id.external_identifier_type.as_deref() == Some("cpe23Type"))
-                    .and_then(|id| id.identifier.clone()));
+                    .and_then(|id| id.identifier.clone())
+            });
 
             // Extract hashes from verified_using
-            let hashes = element.verified_using.as_ref().map(|verified| {
-                verified.iter()
-                    .filter_map(|h| {
-                        h.algorithm.as_ref().and_then(|alg| {
-                            h.hash_value.as_ref().map(|val| cdx::CdxHash {
-                                alg: match alg.to_lowercase().as_str() {
-                                    "sha256" | "sha-256" => "SHA-256".to_string(),
-                                    "sha1" | "sha-1" => "SHA-1".to_string(),
-                                    _ => alg.to_uppercase(),
-                                },
-                                content: val.clone(),
+            let hashes = element
+                .verified_using
+                .as_ref()
+                .map(|verified| {
+                    verified
+                        .iter()
+                        .filter_map(|h| {
+                            h.algorithm.as_ref().and_then(|alg| {
+                                h.hash_value.as_ref().map(|val| cdx::CdxHash {
+                                    alg: match alg.to_lowercase().as_str() {
+                                        "sha256" | "sha-256" => "SHA-256".to_string(),
+                                        "sha1" | "sha-1" => "SHA-1".to_string(),
+                                        _ => alg.to_uppercase(),
+                                    },
+                                    content: val.clone(),
+                                })
                             })
                         })
-                    })
-                    .collect::<Vec<_>>()
-            }).filter(|v| !v.is_empty());
+                        .collect::<Vec<_>>()
+                })
+                .filter(|v| !v.is_empty());
 
             // Map software_primaryPurpose to scope
-            let scope = element.software_primary_purpose.as_ref().map(|purpose| {
-                match purpose.as_str() {
-                    "install" => "required".to_string(),
-                    "optional" => "optional".to_string(),
-                    _ => "required".to_string(),
-                }
-            });
+            let scope =
+                element
+                    .software_primary_purpose
+                    .as_ref()
+                    .map(|purpose| match purpose.as_str() {
+                        "install" => "required".to_string(),
+                        "optional" => "optional".to_string(),
+                        _ => "required".to_string(),
+                    });
 
             let component = cdx::CdxComponent {
                 bom_ref,
-                component_type: if element.element_type == "SpdxPackage" || element.element_type == "software_Package" {
+                component_type: if element.element_type == "SpdxPackage"
+                    || element.element_type == "software_Package"
+                {
                     "library".to_string()
                 } else {
                     "file".to_string()
@@ -373,16 +399,18 @@ pub fn extract_bom_ref(spdx_id: &str) -> String {
         // This prevents collisions from URIs ending in common segments like "recipe"
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let mut hasher = DefaultHasher::new();
         spdx_id.hash(&mut hasher);
         let hash = hasher.finish();
-        
+
         // Also try to extract a meaningful name component
-        let name_part = spdx_id.rsplit('/').next()
+        let name_part = spdx_id
+            .rsplit('/')
+            .next()
             .filter(|s| !s.is_empty() && s.chars().any(|c| c.is_alphabetic()))
             .unwrap_or("element");
-            
+
         format!("{}-{:x}", name_part, hash)
     } else {
         // Simple JSON format: remove SPDXRef- prefix
@@ -410,7 +438,10 @@ pub fn handle_jsonld_element<W: Write>(
         } else {
             "file".to_string()
         },
-        name: element.name.clone().unwrap_or_else(|| "Unknown".to_string()),
+        name: element
+            .name
+            .clone()
+            .unwrap_or_else(|| "Unknown".to_string()),
         version: element.software_package_version.clone(),
         description: element.description.clone().or(element.summary.clone()),
         cpe: element.extract_cpe(),
@@ -429,6 +460,6 @@ pub fn handle_jsonld_element<W: Write>(
     // Serialize this one component straight to the output file
     writer.write_all(b"    ")?;
     serde_json::to_writer(&mut *writer, &component)?;
-    
+
     Ok(())
 }

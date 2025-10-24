@@ -1,8 +1,8 @@
 //! Progress tracking for large file conversions.
 
 use log::info;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
 /// A simple progress tracker for streaming conversions.
@@ -58,10 +58,13 @@ impl ProgressTracker {
         let relationships = self.relationships_processed.load(Ordering::Relaxed);
         let elapsed = self.start_time.elapsed();
         let rate = elements as f64 / elapsed.as_secs_f64();
-        
+
         info!(
             "Conversion complete: {} elements, {} relationships processed in {:.2}s ({:.0} elem/sec)",
-            elements, relationships, elapsed.as_secs_f64(), rate
+            elements,
+            relationships,
+            elapsed.as_secs_f64(),
+            rate
         );
     }
 
