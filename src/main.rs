@@ -184,13 +184,14 @@ fn setup_logging(verbose: bool) {
 /// 
 /// ## XML Files  
 /// - **Structural validation**: Parse XML and validate against internal models
-/// - **XSD schema validation**: Not yet implemented (requires libxml2 bindings)
-/// - For strict XSD validation, use CycloneDX CLI or xmllint
+/// - **XSD schema validation** (with `--schema`): Validate using libxml2 against XSD schemas (e.g., bom-1.6.xsd)
+/// - Matches CycloneDX CLI validation approach using XSD
 /// 
-/// ## Why this approach?
-/// - **Rust ecosystem**: No mature native XSD validation libraries
-/// - **Pragmatic**: Structural validation catches most issues
-/// - **Future-proof**: XSD validation can be added as optional feature with libxml2
+/// ## Implementation
+/// - **XML validation** uses libxml2 bindings for native XSD schema validation
+/// - Validates namespace URI matches expected CycloneDX namespace
+/// - Provides detailed error messages for schema violations
+/// - Requires libxml2-devel and clang-devel system packages for building
 /// 
 /// ## Reference
 /// - CycloneDX CLI validates JSON with JSON Schema and XML with XSD schemas
@@ -347,11 +348,33 @@ fn run_validate(
                 }
             }
             Format::Xml => {
-                // XML XSD validation would go here
-                report.add_issue(
-                    ValidationIssue::info("XSD schema validation not yet implemented for XML files")
-                        .with_suggestion("XML structural validation performed (XML parsing + model validation). For strict XSD validation, use CycloneDX CLI or xmllint.")
-                );
+                // XML XSD validation
+                use sbom_converter::xml_validator;
+                
+                // Extract schema version from detected format
+                let schema_version = detected.version().unwrap_or("1.6");
+                
+                match xml_validator::validate_xml_string(&content, schema_version, "schemas") {
+                    Ok(validation_result) => {
+                        if validation_result.valid {
+                            if !matches!(output_format, OutputFormat::Json) {
+                                println!("{}", "✓ XSD schema validation passed".green().bold());
+                            }
+                        } else {
+                            for msg in validation_result.messages {
+                                report.add_issue(
+                                    ValidationIssue::error(format!("XSD validation: {}", msg))
+                                );
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        report.add_issue(
+                            ValidationIssue::error(format!("XSD validation error: {}", e))
+                                .with_suggestion("Check that schema files are available in schemas/ directory")
+                        );
+                    }
+                }
             }
         }
     }

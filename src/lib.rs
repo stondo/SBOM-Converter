@@ -14,6 +14,7 @@ pub mod progress;
 pub mod schema;
 pub mod validation;
 pub mod version_detection;
+pub mod xml_validator;
 
 use clap::ValueEnum;
 use errors::ConverterError;

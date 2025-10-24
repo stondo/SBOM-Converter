@@ -210,13 +210,20 @@ sbom-converter validate --input <INPUT_FILE> [OPTIONS]
 | Format | Structural Validation | Schema Validation |
 |--------|----------------------|-------------------|
 | **CycloneDX JSON** | ✅ Full | ✅ JSON Schema (bom-1.6.schema.json) |
-| **CycloneDX XML** | ✅ Full | ⚠️ Not yet implemented (use CycloneDX CLI or xmllint) |
+| **CycloneDX XML** | ✅ Full | ✅ XSD Schema (bom-1.6.xsd) via libxml2 |
 | **SPDX JSON** | ✅ Full | ✅ JSON Schema (spdx_3.0.1.schema.json) |
 
-**Note on XML validation:** CycloneDX XML files should be validated against XSD schemas (e.g., `bom-1.6.xsd`). Native XSD validation is not yet implemented due to Rust ecosystem limitations. XML files receive structural validation (XML parsing + model validation). For strict XSD validation, use:
+**Implementation details:**
 
-- [CycloneDX CLI](https://github.com/CycloneDX/cyclonedx-cli)
-- `xmllint --schema bom-1.6.xsd file.xml`
+- **XML validation** uses libxml2 for XSD schema validation, matching the approach used by CycloneDX CLI
+- Validates against official CycloneDX XSD schemas (`bom-1.6.xsd`, `bom-1.5.xsd`, etc.)
+- Checks namespace URI matches expected CycloneDX namespace
+- Provides detailed error messages for schema violations
+
+**System requirements for XML validation:**
+
+- `libxml2` and `libxml2-devel` (or `libxml2-dev` on Debian/Ubuntu)
+- `clang` and `clang-devel` for building libxml bindings
 
 #### Validation Examples
 
@@ -306,7 +313,7 @@ For SPDX JSON-LD format (used by Yocto/OpenEmbedded), the tool performs structur
 [INFO ] Validation passed successfully. (Took 40.15ms)
 ```
 
-### Validation Examples
+### Validation During Conversion
 
 ```bash
 # Validate CycloneDX file (full schema validation)

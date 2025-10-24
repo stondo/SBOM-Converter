@@ -20,6 +20,7 @@ uuid = { version = "1.18.1", features = ["v4", "serde"] }
 chrono = "0.4"
 quick-xml = { version = "0.36", features = ["serialize"] }
 colored = "2.1"
+libxml = "0.3"
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"
