@@ -79,11 +79,11 @@ pub fn run(config: Config) -> Result<(), ConverterError> {
 
     // --- 2. File Handling ---
     let input_file = File::open(&config.input_file)
-        .map_err(|e| ConverterError::Io(e, format!("Failed to open input file")))?;
+        .map_err(|e| ConverterError::Io(e, "Failed to open input file".to_string()))?;
     let input_reader = BufReader::new(input_file);
 
     let output_file = File::create(&config.output_file)
-        .map_err(|e| ConverterError::Io(e, format!("Failed to create output file")))?;
+        .map_err(|e| ConverterError::Io(e, "Failed to create output file".to_string()))?;
     let mut output_writer = BufWriter::new(output_file);
 
     // --- 3. Dispatch to Converter ---

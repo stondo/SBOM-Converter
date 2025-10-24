@@ -551,25 +551,25 @@ impl<'de, 'a> Visitor<'de> for JsonLdGraphStreamVisitor<'a> {
         // In Pass 1, we only care about relationships
         // We need to deserialize as a generic Value to check the type
         while let Some(value) = seq.next_element::<serde_json::Value>()? {
-            if let Some(type_name) = value.get("type").and_then(|t| t.as_str()) {
-                if type_name == "Relationship" || type_name == "LifecycleScopedRelationship" {
-                    // Parse as JSON-LD relationship
-                    let rel: JsonLdRelationship = serde_json::from_value(value)
-                        .map_err(de::Error::custom)?;
-                    
-                    // Convert to simple format and add to index
-                    for target in &rel.to {
-                        let simple_rel = SpdxRelationshipMinimal {
-                            spdx_element_id: rel.from.clone(),
-                            relationship_type: rel.relationship_type.clone(),
-                            related_spdx_element: target.clone(),
-                        };
-                        self.index
-                            .entry(simple_rel.spdx_element_id.clone())
-                            .or_default()
-                            .push(simple_rel);
-                        self.progress.increment_relationship();
-                    }
+            if let Some(type_name) = value.get("type").and_then(|t| t.as_str())
+                && (type_name == "Relationship" || type_name == "LifecycleScopedRelationship")
+            {
+                // Parse as JSON-LD relationship
+                let rel: JsonLdRelationship = serde_json::from_value(value)
+                    .map_err(de::Error::custom)?;
+                
+                // Convert to simple format and add to index
+                for target in &rel.to {
+                    let simple_rel = SpdxRelationshipMinimal {
+                        spdx_element_id: rel.from.clone(),
+                        relationship_type: rel.relationship_type.clone(),
+                        related_spdx_element: target.clone(),
+                    };
+                    self.index
+                        .entry(simple_rel.spdx_element_id.clone())
+                        .or_default()
+                        .push(simple_rel);
+                    self.progress.increment_relationship();
                 }
             }
         }
@@ -813,10 +813,10 @@ impl<'de, 'a, 'b, W: std::io::Write> Visitor<'de> for JsonLdGraphPass3Visitor<'a
                     if let Ok(vuln) = serde_json::from_value::<JsonLdVulnerability>(element) {
                         vulnerabilities.push(vuln);
                     }
-                } else if type_name.starts_with("security_Vex") {
-                    if let Ok(vex) = serde_json::from_value::<JsonLdVexRelationship>(element) {
-                        vex_relationships.push(vex);
-                    }
+                } else if type_name.starts_with("security_Vex")
+                    && let Ok(vex) = serde_json::from_value::<JsonLdVexRelationship>(element)
+                {
+                    vex_relationships.push(vex);
                 }
             }
         }
