@@ -1,5 +1,11 @@
 # SBOM Converter
 
+[![CI](https://github.com/stondo/SBOM-Converter/workflows/CI/badge.svg)](https://github.com/stondo/SBOM-Converter/actions/workflows/ci.yml)
+[![Release](https://github.com/stondo/SBOM-Converter/workflows/Release/badge.svg)](https://github.com/stondo/SBOM-Converter/actions/workflows/release.yml)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](https://github.com/stondo/SBOM-Converter#license)
+[![Rust Version](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](https://www.rust-lang.org)
+[![Version](https://img.shields.io/badge/version-1.0.0-green.svg)](https://github.com/stondo/SBOM-Converter/releases)
+
 A high-performance, memory-efficient Rust tool for bidirectional conversion between **SPDX 3.0.1** and **CycloneDX 1.6** SBOM formats. Designed to handle extremely large SBOM files (tested with 2.5GB files containing nearly 2 million elements) using streaming architecture with constant memory footprint.
 
 **Supported Formats:**
@@ -56,6 +62,26 @@ Uses a **three-pass indexing** approach for comprehensive data extraction:
 Both methods maintain **O(1) memory complexity** relative to file size using Serde's `Visitor` pattern.
 
 ## Installation
+
+### Download Pre-built Binaries
+
+Download the latest release for your platform from the [Releases page](https://github.com/stondo/SBOM-Converter/releases).
+
+Available platforms:
+- Linux (x86_64)
+- macOS (x86_64, ARM64)
+- Windows (x86_64)
+
+Extract and run:
+
+```bash
+# Linux/macOS
+tar xzf sbom-converter-linux-x86_64-v1.0.0.tar.gz
+./sbom-converter-linux-x86_64 --help
+
+# Windows
+# Extract .zip file and run sbom-converter-windows-x86_64.exe
+```
 
 ### Prerequisites
 
@@ -785,6 +811,56 @@ Contributions are welcome! Areas for improvement:
 - Parallel processing for multi-core systems
 - Support for compressed input files (gzip, bzip2, xz)
 - Support for SPDX 2.x and earlier CycloneDX versions
+
+### Development Workflow
+
+We follow a **Git Flow** branching model:
+
+- **`main`** - Production-ready code with tagged releases (e.g., v1.0.0)
+- **`develop`** - Integration branch for features
+- **`feature/*`** - Feature branches (branch from `develop`, merge to `develop`)
+- **`bugfix/*`** - Bug fix branches (branch from `develop`, merge to `develop`)
+- **`hotfix/*`** - Critical production fixes (branch from `main`, merge to both `main` and `develop`)
+
+### Getting Started
+
+1. Fork the repository
+2. Clone your fork: `git clone https://github.com/YOUR-USERNAME/SBOM-Converter.git`
+3. Create a feature branch: `git checkout -b feature/my-new-feature develop`
+4. Make your changes and add tests
+5. Run tests: `cargo test`
+6. Run linter: `cargo clippy -- -D warnings`
+7. Format code: `cargo fmt`
+8. Commit changes with clear messages
+9. Push to your fork: `git push origin feature/my-new-feature`
+10. Open a Pull Request to the `develop` branch
+
+For detailed contribution guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+### Versioning
+
+This project follows [Semantic Versioning](https://semver.org/):
+
+- **MAJOR** version for incompatible API changes
+- **MINOR** version for backwards-compatible functionality additions
+- **PATCH** version for backwards-compatible bug fixes
+
+Current version: **1.0.0**
+
+See [CHANGELOG.md](CHANGELOG.md) for version history.
+
+### Releases
+
+Releases are automated via GitHub Actions:
+
+1. Create a tag: `git tag -a v1.0.0 -m "Release v1.0.0"`
+2. Push the tag: `git push origin v1.0.0`
+3. GitHub Actions builds and publishes binaries for:
+   - Linux (x86_64)
+   - macOS (x86_64, ARM64)
+   - Windows (x86_64)
+
+Download pre-built binaries from the [Releases page](https://github.com/stondo/SBOM-Converter/releases).
 
 ## License
 
