@@ -34,6 +34,18 @@ pub enum ConverterError {
 
     #[error("JSON Parsing Error: {0}")]
     JsonParse(String),
+
+    #[error("Parse Error: {0}")]
+    ParseError(String),
+
+    #[error("Serialization Error: {0}")]
+    SerializationError(String),
+
+    #[error("Invalid Input: {0}")]
+    InvalidInput(String),
+
+    #[error("Unsupported Format: {0}")]
+    UnsupportedFormat(String),
 }
 
 // Implement From<io::Error> for easier error handling
