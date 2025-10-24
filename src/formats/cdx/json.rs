@@ -6,9 +6,8 @@ use std::io::{Read, Write};
 
 /// Parse CycloneDX from JSON
 pub fn parse<R: Read>(reader: R) -> Result<CdxDocument, ConverterError> {
-    serde_json::from_reader(reader).map_err(|e| {
-        ConverterError::ParseError(format!("Failed to parse CycloneDX JSON: {}", e))
-    })
+    serde_json::from_reader(reader)
+        .map_err(|e| ConverterError::ParseError(format!("Failed to parse CycloneDX JSON: {}", e)))
 }
 
 /// Write CycloneDX as JSON
@@ -17,4 +16,3 @@ pub fn write<W: Write>(writer: W, bom: &CdxDocument) -> Result<(), ConverterErro
         ConverterError::SerializationError(format!("Failed to write CycloneDX JSON: {}", e))
     })
 }
-

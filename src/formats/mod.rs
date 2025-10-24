@@ -21,15 +21,12 @@ pub enum Format {
 impl Format {
     /// Detect format from file extension
     pub fn from_extension(path: &Path) -> Result<Self, ConverterError> {
-        let extension = path
-            .extension()
-            .and_then(|s| s.to_str())
-            .ok_or_else(|| {
-                ConverterError::InvalidInput(format!(
-                    "Could not determine file extension for: {}",
-                    path.display()
-                ))
-            })?;
+        let extension = path.extension().and_then(|s| s.to_str()).ok_or_else(|| {
+            ConverterError::InvalidInput(format!(
+                "Could not determine file extension for: {}",
+                path.display()
+            ))
+        })?;
 
         match extension.to_lowercase().as_str() {
             "json" => Ok(Format::Json),

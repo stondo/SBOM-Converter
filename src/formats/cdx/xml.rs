@@ -8,9 +8,8 @@ use std::io::{BufRead, Write};
 
 /// Parse CycloneDX from XML
 pub fn parse<R: BufRead>(reader: R) -> Result<CdxDocument, ConverterError> {
-    from_reader(reader).map_err(|e| {
-        ConverterError::ParseError(format!("Failed to parse CycloneDX XML: {}", e))
-    })
+    from_reader(reader)
+        .map_err(|e| ConverterError::ParseError(format!("Failed to parse CycloneDX XML: {}", e)))
 }
 
 /// Write CycloneDX as XML
@@ -18,9 +17,7 @@ pub fn write<W: Write>(mut writer: W, bom: &CdxDocument) -> Result<(), Converter
     // Add XML declaration
     writer
         .write_all(b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
-        .map_err(|e| {
-            ConverterError::Io(e, "Failed to write XML declaration".to_string())
-        })?;
+        .map_err(|e| ConverterError::Io(e, "Failed to write XML declaration".to_string()))?;
 
     // Serialize to XML string
     let xml_content = to_string(bom).map_err(|e| {
@@ -28,10 +25,9 @@ pub fn write<W: Write>(mut writer: W, bom: &CdxDocument) -> Result<(), Converter
     })?;
 
     // Write XML content
-    writer.write_all(xml_content.as_bytes()).map_err(|e| {
-        ConverterError::Io(e, "Failed to write XML content".to_string())
-    })?;
+    writer
+        .write_all(xml_content.as_bytes())
+        .map_err(|e| ConverterError::Io(e, "Failed to write XML content".to_string()))?;
 
     Ok(())
 }
-

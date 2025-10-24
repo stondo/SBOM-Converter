@@ -12,6 +12,7 @@ pub mod models_cdx;
 pub mod models_spdx;
 pub mod progress;
 pub mod schema;
+pub mod validation;
 
 use clap::ValueEnum;
 use errors::ConverterError;
@@ -55,13 +56,13 @@ pub fn run(config: Config) -> Result<(), ConverterError> {
     info!("  Output: {}", config.output_file.display());
 
     // Determine input and output formats
-    let input_format = config
-        .input_format
-        .unwrap_or_else(|| formats::Format::from_extension(&config.input_file).unwrap_or(formats::Format::Json));
-    
-    let output_format = config
-        .output_format
-        .unwrap_or_else(|| formats::Format::from_extension(&config.output_file).unwrap_or(formats::Format::Json));
+    let input_format = config.input_format.unwrap_or_else(|| {
+        formats::Format::from_extension(&config.input_file).unwrap_or(formats::Format::Json)
+    });
+
+    let output_format = config.output_format.unwrap_or_else(|| {
+        formats::Format::from_extension(&config.output_file).unwrap_or(formats::Format::Json)
+    });
 
     info!("  Input format: {:?}", input_format);
     info!("  Output format: {:?}", output_format);
@@ -72,7 +73,7 @@ pub fn run(config: Config) -> Result<(), ConverterError> {
             "SPDX XML input is not supported (SPDX 3.0+ uses JSON-LD, not XML)".to_string(),
         ));
     }
-    
+
     if output_format == formats::Format::Xml && config.direction == ConversionDirection::CdxToSpdx {
         return Err(ConverterError::UnsupportedFormat(
             "SPDX XML output is not supported (SPDX 3.0+ uses JSON-LD, not XML)".to_string(),
@@ -114,41 +115,48 @@ pub fn run(config: Config) -> Result<(), ConverterError> {
     // If XML output needed, we'll convert from JSON at the end
     let working_input_path: PathBuf;
     let temp_input_file: Option<PathBuf>;
-    
+
     if input_format == formats::Format::Xml && config.direction == ConversionDirection::CdxToSpdx {
         info!("Converting XML input to JSON for processing...");
         let temp_dir = std::env::temp_dir();
-        let temp_json = temp_dir.join(format!("sbom-converter-xml-input-{}.json", uuid::Uuid::new_v4()));
-        
+        let temp_json = temp_dir.join(format!(
+            "sbom-converter-xml-input-{}.json",
+            uuid::Uuid::new_v4()
+        ));
+
         // Parse XML
         let xml_file = File::open(&config.input_file)
             .map_err(|e| ConverterError::Io(e, "Failed to open XML input".to_string()))?;
         let xml_reader = BufReader::new(xml_file);
         let cdx_doc = formats::cdx::xml::parse(xml_reader)?;
-        
+
         // Convert to JSON-compatible format
         let json_value = formats::cdx::converter::document_to_json(&cdx_doc);
-        
+
         // Write to temp JSON
         let json_file = File::create(&temp_json)
             .map_err(|e| ConverterError::Io(e, "Failed to create temp JSON".to_string()))?;
-        serde_json::to_writer_pretty(json_file, &json_value)
-            .map_err(|e| ConverterError::SerializationError(format!("Failed to write temp JSON: {}", e)))?;
-        
+        serde_json::to_writer_pretty(json_file, &json_value).map_err(|e| {
+            ConverterError::SerializationError(format!("Failed to write temp JSON: {}", e))
+        })?;
+
         working_input_path = temp_json.clone();
         temp_input_file = Some(temp_json);
     } else {
         working_input_path = config.input_file.clone();
         temp_input_file = None;
     }
-    
+
     let working_output_path: PathBuf;
     let temp_output_file: Option<PathBuf>;
-    
+
     if output_format == formats::Format::Xml {
         info!("Will convert output to XML after processing...");
         let temp_dir = std::env::temp_dir();
-        let temp_json = temp_dir.join(format!("sbom-converter-xml-output-{}.json", uuid::Uuid::new_v4()));
+        let temp_json = temp_dir.join(format!(
+            "sbom-converter-xml-output-{}.json",
+            uuid::Uuid::new_v4()
+        ));
         working_output_path = temp_json.clone();
         temp_output_file = Some(temp_json);
     } else {
@@ -216,23 +224,24 @@ pub fn run(config: Config) -> Result<(), ConverterError> {
     // --- 5. Handle XML Output (Convert from temp JSON) ---
     if let Some(temp_output) = temp_output_file {
         info!("Converting JSON output to XML...");
-        
+
         // Read the standard CDX JSON output
         let json_content = std::fs::read_to_string(&temp_output)
             .map_err(|e| ConverterError::Io(e, "Failed to read temp JSON output".to_string()))?;
-        
+
         let json_value: serde_json::Value = serde_json::from_str(&json_content)
             .map_err(|e| ConverterError::ParseError(format!("Failed to parse temp JSON: {}", e)))?;
-        
+
         // Convert standard CDX JSON to CdxDocument for XML serialization
-        let cdx_doc = formats::cdx::converter::json_to_document(&json_value)
-            .map_err(|e| ConverterError::ParseError(format!("Failed to convert JSON to document: {}", e)))?;
-        
+        let cdx_doc = formats::cdx::converter::json_to_document(&json_value).map_err(|e| {
+            ConverterError::ParseError(format!("Failed to convert JSON to document: {}", e))
+        })?;
+
         // Write as XML to final output
         let xml_file = File::create(&config.output_file)
             .map_err(|e| ConverterError::Io(e, "Failed to create XML output file".to_string()))?;
         formats::cdx::xml::write(xml_file, &cdx_doc)?;
-        
+
         // Clean up temp file
         if temp_output.exists() {
             let _ = std::fs::remove_file(&temp_output);
