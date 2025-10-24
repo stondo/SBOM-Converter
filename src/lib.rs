@@ -217,11 +217,16 @@ pub fn run(config: Config) -> Result<(), ConverterError> {
     if let Some(temp_output) = temp_output_file {
         info!("Converting JSON output to XML...");
         
-        // Read the JSON output
-        let json_file = File::open(&temp_output)
-            .map_err(|e| ConverterError::Io(e, "Failed to open temp JSON output".to_string()))?;
-        let json_reader = BufReader::new(json_file);
-        let cdx_doc = formats::cdx::json::parse(json_reader)?;
+        // Read the standard CDX JSON output
+        let json_content = std::fs::read_to_string(&temp_output)
+            .map_err(|e| ConverterError::Io(e, "Failed to read temp JSON output".to_string()))?;
+        
+        let json_value: serde_json::Value = serde_json::from_str(&json_content)
+            .map_err(|e| ConverterError::ParseError(format!("Failed to parse temp JSON: {}", e)))?;
+        
+        // Convert standard CDX JSON to CdxDocument for XML serialization
+        let cdx_doc = formats::cdx::converter::json_to_document(&json_value)
+            .map_err(|e| ConverterError::ParseError(format!("Failed to convert JSON to document: {}", e)))?;
         
         // Write as XML to final output
         let xml_file = File::create(&config.output_file)
