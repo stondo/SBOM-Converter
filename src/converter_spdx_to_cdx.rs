@@ -379,7 +379,7 @@ pub fn extract_bom_ref(spdx_id: &str) -> String {
         let hash = hasher.finish();
         
         // Also try to extract a meaningful name component
-        let name_part = spdx_id.rsplit('/').nth(0)
+        let name_part = spdx_id.rsplit('/').next()
             .filter(|s| !s.is_empty() && s.chars().any(|c| c.is_alphabetic()))
             .unwrap_or("element");
             
