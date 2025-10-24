@@ -24,10 +24,16 @@ struct Cli {
     #[arg(long)]
     validate: bool,
 
-    #[arg(long, help = "Split vulnerabilities into separate VEX file (SPDX→CDX only)")]
+    #[arg(
+        long,
+        help = "Split vulnerabilities into separate VEX file (SPDX→CDX only)"
+    )]
     split_vex: bool,
 
-    #[arg(long, help = "Only convert packages/libraries, skip individual files (SPDX→CDX only)")]
+    #[arg(
+        long,
+        help = "Only convert packages/libraries, skip individual files (SPDX→CDX only)"
+    )]
     packages_only: bool,
 
     #[arg(long, help = "Skip JSON-LD structural validation (SPDX JSON-LD only)")]

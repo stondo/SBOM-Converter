@@ -68,7 +68,11 @@ pub fn run(config: Config) -> Result<(), ConverterError> {
             }
         };
 
-        schema::validate_json_schema(schema_str, &config.input_file, config.skip_jsonld_validation)?;
+        schema::validate_json_schema(
+            schema_str,
+            &config.input_file,
+            config.skip_jsonld_validation,
+        )?;
         info!(
             "Validation passed successfully. (Took {:.2?})",
             schema_start.elapsed()

@@ -2,7 +2,7 @@
 //!
 //! We also define the *output* structs for serialization.
 
-use serde::de::{self, Deserializer, IgnoredAny, MapAccess, SeqAccess, Visitor, DeserializeSeed};
+use serde::de::{self, DeserializeSeed, Deserializer, IgnoredAny, MapAccess, SeqAccess, Visitor};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
@@ -27,9 +27,9 @@ pub struct JsonLdRelationship {
     pub relationship_type_name: String, // "Relationship" or "LifecycleScopedRelationship"
     #[serde(rename = "spdxId")]
     pub spdx_id: Option<String>, // JSON-LD @id equivalent
-    pub from: String, // source element ID
+    pub from: String,              // source element ID
     pub relationship_type: String, // e.g., "hasDeclaredLicense", "contains", "dependsOn"
-    pub to: Vec<String>, // target element IDs (can be multiple)
+    pub to: Vec<String>,           // target element IDs (can be multiple)
 }
 
 /// Minimal struct for Pass 2 (Conversion) - Simple JSON format
@@ -63,22 +63,27 @@ pub struct SpdxElementMinimal {
 impl SpdxElementMinimal {
     /// Extract CPE from external identifiers
     pub fn extract_cpe(&self) -> Option<String> {
-        self.external_identifier.as_ref()?.iter()
+        self.external_identifier
+            .as_ref()?
+            .iter()
             .find(|id| id.external_identifier_type.as_deref() == Some("cpe23"))
             .and_then(|id| id.identifier.clone())
     }
-    
+
     /// Extract PURL from external identifiers
     pub fn extract_purl(&self) -> Option<String> {
-        self.external_identifier.as_ref()?.iter()
+        self.external_identifier
+            .as_ref()?
+            .iter()
             .find(|id| id.external_identifier_type.as_deref() == Some("purl"))
             .and_then(|id| id.identifier.clone())
     }
-    
+
     /// Convert SPDX hashes to CycloneDX format
     pub fn extract_hashes(&self) -> Option<Vec<crate::models_cdx::CdxHash>> {
         let verified = self.verified_using.as_ref()?;
-        let hashes: Vec<_> = verified.iter()
+        let hashes: Vec<_> = verified
+            .iter()
             .filter_map(|h| {
                 let alg = h.algorithm.as_ref()?.to_uppercase();
                 let content = h.hash_value.clone()?;
@@ -92,9 +97,13 @@ impl SpdxElementMinimal {
                 })
             })
             .collect();
-        if hashes.is_empty() { None } else { Some(hashes) }
+        if hashes.is_empty() {
+            None
+        } else {
+            Some(hashes)
+        }
     }
-    
+
     /// Map SPDX purpose to CycloneDX scope
     pub fn map_scope(&self) -> Option<String> {
         match self.software_primary_purpose.as_deref()? {
@@ -167,19 +176,19 @@ impl JsonLdVulnerability {
     /// Extract CVE ID from spdxId URL or external identifiers
     pub fn extract_cve_id(&self) -> Option<String> {
         // Try external_identifier first
-        if let Some(cve) = self.external_identifier.as_ref()
-            .and_then(|ids| ids.iter()
+        if let Some(cve) = self.external_identifier.as_ref().and_then(|ids| {
+            ids.iter()
                 .find(|id| id.external_identifier_type.as_deref() == Some("cve"))
-                .and_then(|id| id.identifier.clone()))
-        {
+                .and_then(|id| id.identifier.clone())
+        }) {
             return Some(cve);
         }
-        
+
         // Fall back to extracting from spdxId URL (e.g., .../vulnerability/CVE-2025-11081)
         if let Some(cve_part) = self.spdx_id.split("/vulnerability/").nth(1) {
             return Some(cve_part.to_string());
         }
-        
+
         None
     }
 }
@@ -209,7 +218,8 @@ impl JsonLdVexRelationship {
             "security_VexNotAffectedVulnAssessmentRelationship" => "not_affected",
             "security_VexFixedVulnAssessmentRelationship" => "resolved",
             _ => "in_triage",
-        }.to_string()
+        }
+        .to_string()
     }
 }
 
@@ -222,7 +232,7 @@ impl JsonLdElement {
             name: self.name.clone(),
             version_info: self.software_package_version.clone(),
             summary: self.summary.clone().or_else(|| self.description.clone()),
-            purl: None, // Would need to extract from externalIdentifier
+            purl: None,              // Would need to extract from externalIdentifier
             license_concluded: None, // Would need to extract from relationships
             external_identifier: self.external_identifier.clone(),
             verified_using: self.verified_using.clone(),
@@ -230,25 +240,30 @@ impl JsonLdElement {
             extra: HashMap::new(),
         }
     }
-    
+
     /// Extract CPE from external identifiers
     pub fn extract_cpe(&self) -> Option<String> {
-        self.external_identifier.as_ref()?.iter()
+        self.external_identifier
+            .as_ref()?
+            .iter()
             .find(|id| id.external_identifier_type.as_deref() == Some("cpe23"))
             .and_then(|id| id.identifier.clone())
     }
-    
+
     /// Extract PURL from external identifiers
     pub fn extract_purl(&self) -> Option<String> {
-        self.external_identifier.as_ref()?.iter()
+        self.external_identifier
+            .as_ref()?
+            .iter()
             .find(|id| id.external_identifier_type.as_deref() == Some("purl"))
             .and_then(|id| id.identifier.clone())
     }
-    
+
     /// Convert SPDX hashes to CycloneDX format
     pub fn extract_hashes(&self) -> Option<Vec<crate::models_cdx::CdxHash>> {
         let verified = self.verified_using.as_ref()?;
-        let hashes: Vec<_> = verified.iter()
+        let hashes: Vec<_> = verified
+            .iter()
             .filter_map(|h| {
                 let alg = h.algorithm.as_ref()?.to_uppercase();
                 let content = h.hash_value.clone()?;
@@ -262,9 +277,13 @@ impl JsonLdElement {
                 })
             })
             .collect();
-        if hashes.is_empty() { None } else { Some(hashes) }
+        if hashes.is_empty() {
+            None
+        } else {
+            Some(hashes)
+        }
     }
-    
+
     /// Map SPDX purpose to CycloneDX scope
     pub fn map_scope(&self) -> Option<String> {
         match self.software_primary_purpose.as_deref()? {
@@ -367,7 +386,8 @@ impl SpdxPackage {
                 "required" => "install",
                 "optional" => "optional",
                 _ => "other",
-            }.to_string()
+            }
+            .to_string()
         });
 
         Self {
@@ -474,7 +494,9 @@ impl<'de, 'a> Visitor<'de> for SpdxPass1Visitor<'a> {
             }
         }
         if !found_relationships {
-            eprintln!("Warning: No relationships found in SPDX file (looked for 'relationships' or '@graph')");
+            eprintln!(
+                "Warning: No relationships found in SPDX file (looked for 'relationships' or '@graph')"
+            );
         }
         Ok(())
     }
@@ -555,9 +577,9 @@ impl<'de, 'a> Visitor<'de> for JsonLdGraphStreamVisitor<'a> {
                 && (type_name == "Relationship" || type_name == "LifecycleScopedRelationship")
             {
                 // Parse as JSON-LD relationship
-                let rel: JsonLdRelationship = serde_json::from_value(value)
-                    .map_err(de::Error::custom)?;
-                
+                let rel: JsonLdRelationship =
+                    serde_json::from_value(value).map_err(de::Error::custom)?;
+
                 // Convert to simple format and add to index
                 for target in &rel.to {
                     let simple_rel = SpdxRelationshipMinimal {
@@ -618,7 +640,9 @@ impl<'de, 'a, W: std::io::Write> Visitor<'de> for SpdxPass2Visitor<'a, W> {
             }
         }
         if !found_elements {
-            eprintln!("Warning: No elements found in SPDX file (looked for 'elements' or '@graph')");
+            eprintln!(
+                "Warning: No elements found in SPDX file (looked for 'elements' or '@graph')"
+            );
         }
         Ok(())
     }
@@ -706,12 +730,12 @@ impl<'de, 'a, 'b, W: std::io::Write> Visitor<'de> for JsonLdGraphPass2Visitor<'a
                     self.state.progress.increment_element();
                     continue;
                 }
-                
+
                 if type_name == "software_Package" || type_name == "software_File" {
                     // Parse as JSON-LD element with full data
-                    let element: JsonLdElement = serde_json::from_value(value)
-                        .map_err(de::Error::custom)?;
-                    
+                    let element: JsonLdElement =
+                        serde_json::from_value(value).map_err(de::Error::custom)?;
+
                     // Call enhanced handler with full element data
                     crate::converter_spdx_to_cdx::handle_jsonld_element(
                         element,
@@ -831,7 +855,7 @@ impl<'de, 'a, 'b, W: std::io::Write> Visitor<'de> for JsonLdGraphPass3Visitor<'a
                     .flat_map(|vex| vex.to.iter())
                     .map(|spdx_id| {
                         let bom_ref = crate::converter_spdx_to_cdx::extract_bom_ref(spdx_id);
-                        format!("{}#{}",self.state.serial_number, bom_ref)
+                        format!("{}#{}", self.state.serial_number, bom_ref)
                     })
                     .collect();
 
@@ -844,32 +868,39 @@ impl<'de, 'a, 'b, W: std::io::Write> Visitor<'de> for JsonLdGraphPass3Visitor<'a
 
                 // Write vulnerability (even if no affects, for now)
                 if !self.state.first_vuln {
-                    self.state.writer.write_all(b",\n").map_err(de::Error::custom)?;
+                    self.state
+                        .writer
+                        .write_all(b",\n")
+                        .map_err(de::Error::custom)?;
                 }
                 self.state.first_vuln = false;
 
                 let cdx_vuln = crate::models_cdx::CdxVulnerability {
-                        id: cve_id.clone(),
-                        source: Some(crate::models_cdx::CdxVulnSource {
-                            name: "NVD".to_string(),
-                            url: Some(format!("https://nvd.nist.gov/vuln/detail/{}", cve_id)),
-                        }),
-                        description: None,
-                        analysis: Some(crate::models_cdx::CdxAnalysis {
-                            state,
-                            detail: None,
-                            first_issued: None,
-                            last_updated: None,
-                        }),
-                        affects: Some(affects.into_iter().map(|ref_str| {
-                            crate::models_cdx::CdxAffects {
-                                bom_ref: ref_str,
-                            }
-                        }).collect()),
-                        extra: HashMap::new(),
-                    };
+                    id: cve_id.clone(),
+                    source: Some(crate::models_cdx::CdxVulnSource {
+                        name: "NVD".to_string(),
+                        url: Some(format!("https://nvd.nist.gov/vuln/detail/{}", cve_id)),
+                    }),
+                    description: None,
+                    analysis: Some(crate::models_cdx::CdxAnalysis {
+                        state,
+                        detail: None,
+                        first_issued: None,
+                        last_updated: None,
+                    }),
+                    affects: Some(
+                        affects
+                            .into_iter()
+                            .map(|ref_str| crate::models_cdx::CdxAffects { bom_ref: ref_str })
+                            .collect(),
+                    ),
+                    extra: HashMap::new(),
+                };
 
-                self.state.writer.write_all(b"    ").map_err(de::Error::custom)?;
+                self.state
+                    .writer
+                    .write_all(b"    ")
+                    .map_err(de::Error::custom)?;
                 serde_json::to_writer(&mut *self.state.writer, &cdx_vuln)
                     .map_err(de::Error::custom)?;
             }
@@ -894,13 +925,11 @@ mod tests {
             summary: None,
             purl: None,
             license_concluded: None,
-            external_identifier: Some(vec![
-                SpdxExternalIdentifier {
-                    id_type: "ExternalIdentifier".to_string(),
-                    external_identifier_type: Some("cpe23".to_string()),
-                    identifier: Some("cpe:2.3:a:vendor:product:1.0.0".to_string()),
-                },
-            ]),
+            external_identifier: Some(vec![SpdxExternalIdentifier {
+                id_type: "ExternalIdentifier".to_string(),
+                external_identifier_type: Some("cpe23".to_string()),
+                identifier: Some("cpe:2.3:a:vendor:product:1.0.0".to_string()),
+            }]),
             verified_using: None,
             software_primary_purpose: None,
             extra: HashMap::new(),
@@ -934,13 +963,11 @@ mod tests {
             summary: None,
             purl: None,
             license_concluded: None,
-            external_identifier: Some(vec![
-                SpdxExternalIdentifier {
-                    id_type: "ExternalIdentifier".to_string(),
-                    external_identifier_type: Some("purl".to_string()),
-                    identifier: Some("pkg:maven/com.example/my-library@1.0.0".to_string()),
-                },
-            ]),
+            external_identifier: Some(vec![SpdxExternalIdentifier {
+                id_type: "ExternalIdentifier".to_string(),
+                external_identifier_type: Some("purl".to_string()),
+                identifier: Some("pkg:maven/com.example/my-library@1.0.0".to_string()),
+            }]),
             verified_using: None,
             software_primary_purpose: None,
             extra: HashMap::new(),
@@ -1073,7 +1100,10 @@ mod tests {
         // Verify CPE mapping
         let ext_ids = spdx_pkg.external_identifier.unwrap();
         assert_eq!(ext_ids.len(), 1);
-        assert_eq!(ext_ids[0].external_identifier_type, Some("cpe23Type".to_string()));
+        assert_eq!(
+            ext_ids[0].external_identifier_type,
+            Some("cpe23Type".to_string())
+        );
         assert_eq!(
             ext_ids[0].identifier,
             Some("cpe:2.3:a:vendor:my-library:2.0.0".to_string())
@@ -1154,9 +1184,6 @@ mod tests {
         // Test excluded -> other
         cdx_comp.scope = Some("excluded".to_string());
         let spdx_pkg = SpdxPackage::from_cdx_component(&cdx_comp);
-        assert_eq!(
-            spdx_pkg.software_primary_purpose,
-            Some("other".to_string())
-        );
+        assert_eq!(spdx_pkg.software_primary_purpose, Some("other".to_string()));
     }
 }
