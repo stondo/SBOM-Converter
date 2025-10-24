@@ -29,22 +29,26 @@ This project adheres to a code of conduct that all contributors are expected to 
 
 1. Fork the repository on GitHub
 2. Clone your fork locally:
+
    ```bash
    git clone https://github.com/YOUR-USERNAME/SBOM-Converter.git
    cd SBOM-Converter
    ```
 
 3. Add the upstream repository:
+
    ```bash
    git remote add upstream https://github.com/stondo/SBOM-Converter.git
    ```
 
 4. Build the project:
+
    ```bash
    cargo build
    ```
 
 5. Run tests to verify everything works:
+
    ```bash
    cargo test
    ```
@@ -70,6 +74,105 @@ git push origin develop
 4. Commit with clear, descriptive messages
 5. Push to your fork
 6. Open a Pull Request
+
+## Daily Development Workflow
+
+### Starting a New Feature
+
+```bash
+# Always start from develop
+git checkout develop
+git pull upstream develop
+
+# Create feature branch
+git checkout -b feature/my-awesome-feature
+
+# Make changes, commit frequently
+git add .
+git commit -m "feat(component): add new feature"
+
+# Push to your fork
+git push origin feature/my-awesome-feature
+```
+
+### Working on a Bug Fix
+
+```bash
+git checkout develop
+git pull upstream develop
+git checkout -b bugfix/fix-issue-description
+
+# Fix the bug, add test
+git add .
+git commit -m "fix(validation): handle null values correctly"
+
+git push origin bugfix/fix-issue-description
+# Open PR to upstream develop
+```
+
+### Running Tests Locally
+
+```bash
+# Run all tests
+cargo test
+
+# Run with output
+cargo test -- --nocapture
+
+# Run specific test
+cargo test test_name
+
+# Run integration tests
+cargo test --test integration_test
+```
+
+### Code Quality Checks
+
+Run these before pushing:
+
+```bash
+# Check formatting
+cargo fmt --check
+
+# Apply formatting
+cargo fmt
+
+# Run linter
+cargo clippy -- -D warnings
+
+# Run all checks together
+cargo test && cargo clippy -- -D warnings && cargo fmt --check
+```
+
+### Checking CI Status
+
+After pushing:
+
+1. **View all workflow runs**: <https://github.com/stondo/SBOM-Converter/actions>
+2. **View your branch**: Look for your branch name in the Actions tab
+3. **Check specific workflows**:
+   - CI workflow (tests, lint, build)
+   - Ensure all jobs pass before requesting review
+
+### Updating Your Branch
+
+If your branch becomes outdated:
+
+```bash
+# Sync with upstream develop
+git checkout develop
+git pull upstream develop
+
+# Update your feature branch
+git checkout feature/my-feature
+git merge develop
+
+# Or use rebase for cleaner history
+git rebase develop
+
+# Force push if you rebased (use with caution)
+git push origin feature/my-feature --force-with-lease
+```
 
 ## Branching Strategy
 
@@ -97,11 +200,13 @@ We follow a **Git Flow** branching model with the following branches:
 - **Purpose**: Develop new features or enhancements
 
 Examples:
+
 - `feature/parallel-processing`
 - `feature/xml-support`
 - `feature/compression-support`
 
 **Workflow**:
+
 ```bash
 # Create feature branch
 git checkout develop
@@ -137,6 +242,7 @@ Example: `bugfix/123-fix-validation-crash`
 Example: `hotfix/1.0.1`
 
 **Workflow**:
+
 ```bash
 # Create hotfix branch
 git checkout main
@@ -161,6 +267,7 @@ git push origin hotfix/1.0.1
 Example: `release/1.1.0`
 
 **Workflow**:
+
 ```bash
 # Create release branch
 git checkout develop
@@ -178,23 +285,27 @@ git checkout -b release/1.1.0
 ### Before Submitting
 
 1. **Update your branch** with the latest changes from `develop`:
+
    ```bash
    git fetch upstream
    git rebase upstream/develop
    ```
 
 2. **Run all tests**:
+
    ```bash
    cargo test
    cargo test --test integration_test
    ```
 
 3. **Check formatting**:
+
    ```bash
    cargo fmt --check
    ```
 
 4. **Run linter**:
+
    ```bash
    cargo clippy -- -D warnings
    ```
