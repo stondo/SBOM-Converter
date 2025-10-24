@@ -186,6 +186,76 @@ This produces two files:
   --verbose
 ```
 
+### Validate Command
+
+The tool includes a standalone validation command to check SBOM files without converting them:
+
+```bash
+sbom-converter validate --input <INPUT_FILE> [OPTIONS]
+```
+
+#### Validation Options
+
+| Option | Description |
+|--------|-------------|
+| `--input <FILE>` | Path to SBOM file (JSON or XML) |
+| `--schema` | Perform schema validation (JSON Schema for JSON files, XSD for XML) |
+| `--show-version` | Display detected SBOM format and version |
+| `--report-format <text\|json>` | Output format (default: text) |
+| `--fail-on-errors` | Exit with error code if validation fails |
+| `--no-color` | Disable colored output |
+
+#### Validation Capabilities
+
+| Format | Structural Validation | Schema Validation |
+|--------|----------------------|-------------------|
+| **CycloneDX JSON** | ✅ Full | ✅ JSON Schema (bom-1.6.schema.json) |
+| **CycloneDX XML** | ✅ Full | ⚠️ Not yet implemented (use CycloneDX CLI or xmllint) |
+| **SPDX JSON** | ✅ Full | ✅ JSON Schema (spdx_3.0.1.schema.json) |
+
+**Note on XML validation:** CycloneDX XML files should be validated against XSD schemas (e.g., `bom-1.6.xsd`). Native XSD validation is not yet implemented due to Rust ecosystem limitations. XML files receive structural validation (XML parsing + model validation). For strict XSD validation, use:
+
+- [CycloneDX CLI](https://github.com/CycloneDX/cyclonedx-cli)
+- `xmllint --schema bom-1.6.xsd file.xml`
+
+#### Validation Examples
+
+```bash
+# Validate a JSON file (structural validation)
+sbom-converter validate --input sbom.json
+
+# Validate with schema checking
+sbom-converter validate --input sbom.json --schema
+
+# Check SBOM format and version
+sbom-converter validate --input sbom.xml --show-version
+
+# Get JSON report
+sbom-converter validate --input sbom.json --report-format json
+
+# Validate and fail on errors (for CI/CD)
+sbom-converter validate --input sbom.json --schema --fail-on-errors
+```
+
+#### Example Output
+
+```text
+ℹ Validating XML structure...
+
+Format Detection:
+  Format: CycloneDX 1.6
+  Schema: cdx_1.6.schema.json
+
+Validating: /tmp/test-cdx.xml
+
+ℹ [components[0]] Component missing purl (Package URL)
+  → Add "purl": "pkg:npm/name@version" for better identification
+ℹ XSD schema validation not yet implemented for XML files
+  → XML structural validation performed (XML parsing + model validation).
+
+Summary: 2 infos
+```
+
 ## Schema Validation
 
 The tool supports optional JSON schema validation using the `--validate` flag. The schema files are bundled with the tool:

@@ -13,6 +13,7 @@ pub mod models_spdx;
 pub mod progress;
 pub mod schema;
 pub mod validation;
+pub mod version_detection;
 
 use clap::ValueEnum;
 use errors::ConverterError;

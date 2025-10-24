@@ -3,11 +3,13 @@
 //! Provides detailed validation with helpful error messages and suggestions.
 
 use colored::*;
+use serde::{Serialize, Deserialize};
 use serde_json::Value;
 use std::path::Path;
 
 /// Validation severity levels
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Severity {
     Error,
     Warning,
@@ -15,12 +17,15 @@ pub enum Severity {
 }
 
 /// A single validation issue with context
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidationIssue {
     pub severity: Severity,
     pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub location: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub suggestion: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub line: Option<usize>,
 }
 
@@ -141,10 +146,20 @@ impl ValidationIssue {
 }
 
 /// Validation result containing all issues found
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidationReport {
     pub issues: Vec<ValidationIssue>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub file_path: Option<String>,
+    pub summary: ValidationSummary,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ValidationSummary {
+    pub errors: usize,
+    pub warnings: usize,
+    pub infos: usize,
+    pub total: usize,
 }
 
 impl ValidationReport {
@@ -152,6 +167,12 @@ impl ValidationReport {
         Self {
             issues: Vec::new(),
             file_path: None,
+            summary: ValidationSummary {
+                errors: 0,
+                warnings: 0,
+                infos: 0,
+                total: 0,
+            },
         }
     }
 
@@ -162,6 +183,14 @@ impl ValidationReport {
 
     pub fn add_issue(&mut self, issue: ValidationIssue) {
         self.issues.push(issue);
+        self.update_summary();
+    }
+
+    fn update_summary(&mut self) {
+        self.summary.errors = self.error_count();
+        self.summary.warnings = self.warning_count();
+        self.summary.infos = self.info_count();
+        self.summary.total = self.issues.len();
     }
 
     pub fn has_errors(&self) -> bool {
@@ -187,6 +216,11 @@ impl ValidationReport {
             .iter()
             .filter(|i| i.severity == Severity::Info)
             .count()
+    }
+
+    /// Convert the report to JSON
+    pub fn to_json(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_string_pretty(self)
     }
 
     /// Print the report with colors
