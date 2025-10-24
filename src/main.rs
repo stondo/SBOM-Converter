@@ -2,6 +2,7 @@
 
 use clap::{Parser, ValueEnum};
 use sbom_converter::errors::ConverterError;
+use sbom_converter::formats::Format;
 use sbom_converter::{Config, ConversionDirection};
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -17,6 +18,12 @@ struct Cli {
 
     #[arg(short, long, value_enum)]
     direction: CliDirection,
+
+    #[arg(long, value_enum, help = "Input file format (autodetect if not specified)")]
+    input_format: Option<CliFormat>,
+
+    #[arg(long, value_enum, help = "Output file format (autodetect if not specified)")]
+    output_format: Option<CliFormat>,
 
     #[arg(short, long)]
     verbose: bool,
@@ -38,6 +45,16 @@ struct Cli {
 
     #[arg(long, help = "Skip JSON-LD structural validation (SPDX JSON-LD only)")]
     skip_jsonld_validation: bool,
+}
+
+#[derive(Debug, Clone, ValueEnum)]
+enum CliFormat {
+    #[value(name = "json")]
+    Json,
+    #[value(name = "xml")]
+    Xml,
+    #[value(name = "autodetect")]
+    Autodetect,
 }
 
 #[derive(Debug, Clone, ValueEnum)]
@@ -72,10 +89,31 @@ fn run_app() -> Result<(), ConverterError> {
         CliDirection::SpdxToCdx => ConversionDirection::SpdxToCdx,
     };
 
+    // Convert CLI format options to internal Format type
+    let input_format = cli.input_format.map(|f| match f {
+        CliFormat::Json => Format::Json,
+        CliFormat::Xml => Format::Xml,
+        CliFormat::Autodetect => {
+            // Autodetect from file extension
+            Format::from_extension(&cli.input).unwrap_or(Format::Json)
+        }
+    });
+
+    let output_format = cli.output_format.map(|f| match f {
+        CliFormat::Json => Format::Json,
+        CliFormat::Xml => Format::Xml,
+        CliFormat::Autodetect => {
+            // Autodetect from file extension
+            Format::from_extension(&cli.output).unwrap_or(Format::Json)
+        }
+    });
+
     let config = Config {
         input_file: cli.input,
         output_file: cli.output,
         direction,
+        input_format,
+        output_format,
         validate: cli.validate,
         split_vex: cli.split_vex,
         packages_only: cli.packages_only,

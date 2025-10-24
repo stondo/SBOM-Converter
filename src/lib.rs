@@ -36,6 +36,8 @@ pub struct Config {
     pub input_file: PathBuf,
     pub output_file: PathBuf,
     pub direction: ConversionDirection,
+    pub input_format: Option<formats::Format>,
+    pub output_format: Option<formats::Format>,
     pub validate: bool,
     pub split_vex: bool,
     pub packages_only: bool,

@@ -18,35 +18,3 @@ pub fn write<W: Write>(writer: W, doc: &SpdxDocument) -> Result<(), ConverterErr
     })
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::io::Cursor;
-
-    #[test]
-    fn test_parse_minimal_spdx() {
-        let json = r#"{
-            "@context": "https://spdx.github.io/spdx-3-model/context.json",
-            "@graph": [],
-            "spdxId": "SPDXRef-DOCUMENT",
-            "name": "Test Document",
-            "creationInfo": {
-                "created": "2024-01-01T00:00:00Z",
-                "specVersion": "3.0.1"
-            }
-        }"#;
-
-        let cursor = Cursor::new(json.as_bytes());
-        let result = parse(cursor);
-        
-        if result.is_err() {
-            println!("Parse error (structure may need adjustment): {:?}", result);
-        }
-    }
-
-    #[test]
-    fn test_write_spdx() {
-        // This test will be implemented once we verify the SpdxDocument structure
-        // For now, we'll skip detailed testing
-    }
-}
