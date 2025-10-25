@@ -443,7 +443,7 @@ fn validate_cdx_component(comp: &Value, idx: usize, report: &mut ValidationRepor
             if !valid_types.contains(&type_str) {
                 report.add_issue(
                     ValidationIssue::warning(format!("Uncommon component type: '{}'", type_str))
-                        .with_location(&format!("{}.type", location))
+                        .with_location(format!("{}.type", location))
                         .with_suggestion(format!("Valid types: {}", valid_types.join(", "))),
                 );
             }
@@ -462,13 +462,13 @@ fn validate_cdx_component(comp: &Value, idx: usize, report: &mut ValidationRepor
             if name_str.trim().is_empty() {
                 report.add_issue(
                     ValidationIssue::error("Component name cannot be empty")
-                        .with_location(&format!("{}.name", location)),
+                        .with_location(format!("{}.name", location)),
                 );
             }
         } else {
             report.add_issue(
                 ValidationIssue::error("Component name must be a string")
-                    .with_location(&format!("{}.name", location)),
+                    .with_location(format!("{}.name", location)),
             );
         }
     } else {
