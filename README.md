@@ -4,14 +4,30 @@
 [![Release](https://github.com/stondo/SBOM-Converter/workflows/Release/badge.svg)](https://github.com/stondo/SBOM-Converter/actions/workflows/release.yml)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](https://github.com/stondo/SBOM-Converter#license)
 [![Rust Version](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](https://www.rust-lang.org)
-[![Version](https://img.shields.io/badge/version-1.0.0-green.svg)](https://github.com/stondo/SBOM-Converter/releases)
+[![Version](https://img.shields.io/badge/version-1.1.0-green.svg)](https://github.com/stondo/SBOM-Converter/releases)
 
-A high-performance, memory-efficient Rust tool for bidirectional conversion between **SPDX 3.0.1** and **CycloneDX 1.6** SBOM formats. Designed to handle extremely large SBOM files (tested with 2.5GB files containing nearly 2 million elements) using streaming architecture with constant memory footprint.
+A high-performance, memory-efficient Rust tool for bidirectional conversion between **SPDX 3.0.1** and **CycloneDX 1.3-1.7** SBOM formats. Designed to handle extremely large SBOM files (tested with 2.5GB files containing nearly 2 million elements) using streaming architecture with constant memory footprint.
 
 **Supported Formats:**
 
-- **SPDX:** Version 3.0.1 (both simple JSON and JSON-LD/RDF formats)
-- **CycloneDX:** Version 1.6 (JSON only)
+- **SPDX:** Version 3.0.1 (both simple JSON and JSON-LD/RDF formats, plus XML)
+- **CycloneDX:** Versions 1.3, 1.4, 1.5, 1.6, 1.7 (JSON and XML formats)
+
+**Format Compatibility Matrix:**
+
+| Input Format | Output Format | Versions Supported | Schema Validation |
+|--------------|---------------|-------------------|-------------------|
+| SPDX 3.0.1 JSON/JSON-LD | CycloneDX JSON | 1.3, 1.4, 1.5, 1.6 (default), 1.7 | ✅ JSON Schema |
+| SPDX 3.0.1 XML | CycloneDX JSON | 1.3, 1.4, 1.5, 1.6 (default), 1.7 | ✅ XSD Schema |
+| CycloneDX JSON | SPDX 3.0.1 JSON-LD | 3.0.1 | ✅ JSON Schema |
+| CycloneDX XML | SPDX 3.0.1 XML | 3.0.1 | ✅ XSD Schema |
+
+**Competitive Advantages:**
+
+- **SPDX 3.0.1 Support**: Full support for the latest SPDX specification (most tools still only support SPDX 2.x)
+- **Multi-Version CycloneDX**: Support for all CycloneDX versions from 1.3 to 1.7
+- **XML Format Support**: Both input and output in XML format with XSD validation
+- **Streaming Architecture**: Handles multi-gigabyte files with constant memory usage
 
 **Validated With:**
 
@@ -68,6 +84,7 @@ Both methods maintain **O(1) memory complexity** relative to file size using Ser
 Download the latest release for your platform from the [Releases page](https://github.com/stondo/SBOM-Converter/releases).
 
 Available platforms:
+
 - Linux (x86_64)
 - macOS (x86_64, ARM64)
 - Windows (x86_64)
@@ -76,7 +93,7 @@ Extract and run:
 
 ```bash
 # Linux/macOS
-tar xzf sbom-converter-linux-x86_64-v1.0.0.tar.gz
+tar xzf sbom-converter-linux-x86_64-v1.1.0.tar.gz
 ./sbom-converter-linux-x86_64 --help
 
 # Windows
@@ -113,13 +130,14 @@ sbom-converter --input <INPUT_FILE> --output <OUTPUT_FILE> --direction <DIRECTIO
 
 | Argument | Short | Required | Description |
 |----------|-------|----------|-------------|
-| `--input` | `-i` | Yes | Path to input SBOM file (JSON format) |
-| `--output` | `-o` | Yes | Path to output SBOM file (JSON format) |
+| `--input` | `-i` | Yes | Path to input SBOM file (JSON or XML format) |
+| `--output` | `-o` | Yes | Path to output SBOM file (JSON or XML format) |
 | `--direction` | `-d` | Yes | Conversion direction: `spdx-to-cdx` or `cdx-to-spdx` |
+| `--output-version` | | No | CycloneDX output version: `1.3`, `1.4`, `1.5`, `1.6` (default), `1.7` (ignored for SPDX output) |
 | `--packages-only` | | No | Only convert packages/libraries, skip individual files (SPDX→CDX only) |
 | `--split-vex` | | No | Split vulnerabilities into separate VEX file (SPDX→CDX only) |
 | `--verbose` | `-v` | No | Enable detailed logging output |
-| `--validate` | | No | Enable JSON schema validation (requires schemas/) |
+| `--validate` | | No | Enable schema validation (JSON Schema or XSD depending on format) |
 
 ### Examples
 
@@ -144,6 +162,26 @@ Filter out individual files, keeping only packages/libraries:
   --direction spdx-to-cdx \
   --packages-only \
   --verbose
+```
+
+#### Convert SPDX to CycloneDX with Specific Version
+
+Generate CycloneDX output in a specific version:
+
+```bash
+# Generate CycloneDX 1.3 output
+./target/release/sbom-converter \
+  --input sbom-spdx.json \
+  --output sbom-cdx-1.3.json \
+  --direction spdx-to-cdx \
+  --output-version 1.3
+
+# Generate CycloneDX 1.7 output (latest)
+./target/release/sbom-converter \
+  --input sbom-spdx.json \
+  --output sbom-cdx-1.7.json \
+  --direction spdx-to-cdx \
+  --output-version 1.7
 ```
 
 #### Convert SPDX to CycloneDX with Split VEX
@@ -185,6 +223,277 @@ This produces two files:
   --validate \
   --verbose
 ```
+
+### Validate Command
+
+The tool includes a standalone validation command to check SBOM files without converting them:
+
+```bash
+sbom-converter validate --input <INPUT_FILE> [OPTIONS]
+```
+
+#### Validation Options
+
+| Option | Description |
+|--------|-------------|
+| `--input <FILE>` | Path to SBOM file (JSON or XML) |
+| `--schema` | Perform schema validation (JSON Schema for JSON files, XSD for XML) |
+| `--show-version` | Display detected SBOM format and version |
+| `--report-format <text\|json>` | Output format (default: text) |
+| `--fail-on-errors` | Exit with error code if validation fails |
+| `--no-color` | Disable colored output |
+
+#### Validation Capabilities
+
+| Format | Structural Validation | Schema Validation |
+|--------|----------------------|-------------------|
+| **CycloneDX JSON** | ✅ Full | ✅ JSON Schema (bom-1.6.schema.json) |
+| **CycloneDX XML** | ✅ Full | ✅ XSD Schema (bom-1.6.xsd) via libxml2 |
+| **SPDX JSON** | ✅ Full | ✅ JSON Schema (spdx_3.0.1.schema.json) |
+
+**Implementation details:**
+
+- **XML validation** uses libxml2 for XSD schema validation, matching the approach used by CycloneDX CLI
+- Validates against official CycloneDX XSD schemas (`bom-1.6.xsd`, `bom-1.5.xsd`, etc.)
+- Checks namespace URI matches expected CycloneDX namespace
+- Provides detailed error messages for schema violations
+
+**System requirements for XML validation:**
+
+- `libxml2` and `libxml2-devel` (or `libxml2-dev` on Debian/Ubuntu)
+- `clang` and `clang-devel` for building libxml bindings
+
+#### Validation Examples
+
+```bash
+# Validate a JSON file (structural validation)
+sbom-converter validate --input sbom.json
+
+# Validate with schema checking
+sbom-converter validate --input sbom.json --schema
+
+# Check SBOM format and version
+sbom-converter validate --input sbom.xml --show-version
+
+# Get JSON report
+sbom-converter validate --input sbom.json --report-format json
+
+# Validate and fail on errors (for CI/CD)
+sbom-converter validate --input sbom.json --schema --fail-on-errors
+```
+
+#### Example Output
+
+```text
+ℹ Validating XML structure...
+
+Format Detection:
+  Format: CycloneDX 1.6
+  Schema: cdx_1.6.schema.json
+
+Validating: /tmp/test-cdx.xml
+
+ℹ [components[0]] Component missing purl (Package URL)
+  → Add "purl": "pkg:npm/name@version" for better identification
+ℹ XSD schema validation not yet implemented for XML files
+  → XML structural validation performed (XML parsing + model validation).
+
+Summary: 2 infos
+```
+
+### Merge Command
+
+Combine multiple SBOM files into a single consolidated SBOM. The merge command intelligently deduplicates components and combines dependencies from all input files.
+
+```bash
+sbom-converter merge --inputs <FILE> <FILE>... --output <FILE> [OPTIONS]
+```
+
+#### Merge Options
+
+| Option | Description |
+|--------|-------------|
+| `--inputs <FILE>...` | Two or more input SBOM files to merge (required, minimum 2) |
+| `--output <FILE>` | Output file path for merged SBOM (required) |
+| `--dedup <STRATEGY>` | Deduplication strategy: `first` (default) or `latest` |
+| `--output-format <FORMAT>` | Output format: `json` or `xml` (auto-detected from extension) |
+
+#### Deduplication Strategies
+
+| Strategy | Behavior |
+|----------|----------|
+| **first** (default) | Keeps the first occurrence of duplicate components |
+| **latest** | Keeps the latest (last) occurrence of duplicate components |
+
+Components are identified by:
+
+1. **purl** (Package URL) - highest priority
+2. **bom-ref** (CycloneDX) or **spdxId** (SPDX) - fallback
+3. **name + version** - final fallback
+
+#### Merge Examples
+
+**Basic merge:**
+
+```bash
+sbom-converter merge \
+  --inputs sbom1.json sbom2.json \
+  --output merged.json
+```
+
+**Merge multiple files with latest strategy:**
+
+```bash
+sbom-converter merge \
+  --inputs project-a.json project-b.json project-c.json \
+  --output combined.json \
+  --dedup latest
+```
+
+**Merge using wildcards:**
+
+```bash
+sbom-converter merge \
+  --inputs services/*.json \
+  --output all-services.json
+```
+
+**Merge to XML output (CycloneDX only):**
+
+```bash
+sbom-converter merge \
+  --inputs app1.json app2.json \
+  --output merged.xml \
+  --output-format xml
+```
+
+#### Merge Behavior
+
+**What gets merged:**
+
+- ✅ Components/packages from all files
+- ✅ Dependencies and relationships
+- ✅ Vulnerabilities (CycloneDX)
+- ✅ Metadata from first file
+
+**Deduplication:**
+
+- Duplicate components are identified by purl, bom-ref, or name+version
+- Dependencies are combined (union of all dependency relationships)
+- Strategy determines which component metadata to keep
+
+**Requirements:**
+
+- All input files must be the same format (all CycloneDX or all SPDX)
+- Mixing formats will fail with an error
+- Minimum 2 input files required
+- Supports both JSON and XML output for CycloneDX
+- SPDX only supports JSON/JSON-LD output (no XML format in SPDX specification)
+
+### Diff Command
+
+Compare two SBOM files and generate a detailed report of differences. The diff command shows added, removed, and modified components, dependencies, and vulnerabilities.
+
+```bash
+sbom-converter diff --file1 <FILE> --file2 <FILE> [OPTIONS]
+```
+
+#### Diff Options
+
+| Option | Description |
+|--------|-------------|
+| `--file1 <FILE>` | First SBOM file to compare (required) |
+| `--file2 <FILE>` | Second SBOM file to compare (required) |
+| `--report-format <FORMAT>` | Output format: `text` (default) or `json` |
+| `--output <FILE>` | Write diff report to file (prints to stdout if not specified) |
+| `--diff-only` | Show only differences, hide unchanged components |
+
+#### Diff Examples
+
+**Basic comparison (text output):**
+
+```bash
+sbom-converter diff \
+  --file1 old-sbom.json \
+  --file2 new-sbom.json
+```
+
+**JSON output for programmatic processing:**
+
+```bash
+sbom-converter diff \
+  --file1 baseline.json \
+  --file2 current.json \
+  --report-format json \
+  --output diff-report.json
+```
+
+**Show only differences:**
+
+```bash
+sbom-converter diff \
+  --file1 v1.0-sbom.json \
+  --file2 v2.0-sbom.json \
+  --diff-only
+```
+
+#### Diff Report Sections
+
+The diff report includes the following sections:
+
+**Summary:**
+
+- Count of added, removed, modified, and unchanged components
+- Dependencies added/removed
+- Vulnerabilities added/removed
+
+**Components:**
+
+- ✅ **Added:** New components in file2 not in file1
+- ✗ **Removed:** Components in file1 not in file2
+- ~ **Modified:** Components present in both but with changes (version, type, etc.)
+- = **Unchanged:** Identical components (shown unless `--diff-only` is used)
+
+**Dependencies:**
+
+- Added/removed dependency relationships between components
+
+**Vulnerabilities (CycloneDX):**
+
+- Added/removed security vulnerabilities
+
+**Metadata:**
+
+- Changes to document-level metadata (serial number, version, etc.)
+
+#### Diff Behavior
+
+**Component Identification:**
+
+Components are matched using the same priority as merge:
+
+1. **purl** (Package URL) - highest priority
+2. **bom-ref** (CycloneDX) or **spdxId** (SPDX) - fallback
+3. **name + version** - final fallback
+
+**Format Requirements:**
+
+- Both files must be the same SBOM format (both CycloneDX or both SPDX)
+- Comparing different formats will fail with an error
+- Supports both CycloneDX and SPDX 3.0.1 (JSON and JSON-LD)
+
+**Output Formats:**
+
+- **Text:** Human-readable colored output with clear sections
+- **JSON:** Structured data for automated processing and CI/CD integration
+
+**Use Cases:**
+
+- Track component changes between software versions
+- Verify SBOM updates after dependency upgrades
+- Audit supply chain changes in CI/CD pipelines
+- Compare production vs. development SBOMs
+- Validate merge operations
 
 ## Schema Validation
 
@@ -236,7 +545,7 @@ For SPDX JSON-LD format (used by Yocto/OpenEmbedded), the tool performs structur
 [INFO ] Validation passed successfully. (Took 40.15ms)
 ```
 
-### Validation Examples
+### Validation During Conversion
 
 ```bash
 # Validate CycloneDX file (full schema validation)
@@ -827,13 +1136,16 @@ We follow a **Git Flow** branching model:
 1. Fork the repository
 2. Clone your fork: `git clone https://github.com/YOUR-USERNAME/SBOM-Converter.git`
 3. Create a feature branch: `git checkout -b feature/my-new-feature develop`
-4. Make your changes and add tests
-5. Run tests: `cargo test`
-6. Run linter: `cargo clippy -- -D warnings`
-7. Format code: `cargo fmt`
-8. Commit changes with clear messages
-9. Push to your fork: `git push origin feature/my-new-feature`
-10. Open a Pull Request to the `develop` branch
+4. **Set up Git hooks**: `./scripts/setup-hooks.sh` (runs `cargo fmt` before commits)
+5. Make your changes and add tests
+6. Run tests: `cargo test`
+7. Run linter: `cargo clippy -- -D warnings`
+8. Format code: `cargo fmt` (or let the pre-commit hook do it)
+9. Commit changes with clear messages
+10. Push to your fork: `git push origin feature/my-new-feature`
+11. Open a Pull Request to the `develop` branch
+
+**Pre-commit Hook:** The setup script installs a Git hook that automatically checks code formatting and runs clippy before each commit, ensuring code quality standards are maintained.
 
 For detailed contribution guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -845,7 +1157,7 @@ This project follows [Semantic Versioning](https://semver.org/):
 - **MINOR** version for backwards-compatible functionality additions
 - **PATCH** version for backwards-compatible bug fixes
 
-Current version: **1.0.0**
+Current version: **1.1.0**
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
 
