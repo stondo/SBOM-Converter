@@ -3,7 +3,7 @@
 //! Provides detailed validation with helpful error messages and suggestions.
 
 use colored::*;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::Path;
 

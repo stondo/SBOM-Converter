@@ -4,8 +4,8 @@
 //! Pass 2: Stream `elements` array, writing `components` and `vulnerabilities`
 //!         one-by-one. Then, use the index to write `dependencies`.
 
-use crate::errors::ConverterError;
 use crate::cdx_version::CdxVersion;
+use crate::errors::ConverterError;
 use crate::models_cdx as cdx;
 use crate::models_spdx as spdx;
 use crate::progress::ProgressTracker;
@@ -102,7 +102,13 @@ pub fn convert_spdx_to_cdx<R: Read, W: Write>(
         })?;
         let mut vex_writer = BufWriter::new(vex_file);
 
-        pass_3_extract_vulnerabilities(input_reader_pass_3, &mut vex_writer, &serial_number, true, output_version)?;
+        pass_3_extract_vulnerabilities(
+            input_reader_pass_3,
+            &mut vex_writer,
+            &serial_number,
+            true,
+            output_version,
+        )?;
     } else {
         // Write vulnerabilities to main file
         pass_3_extract_vulnerabilities(
@@ -155,7 +161,8 @@ fn pass_2_convert_and_write<R: Read, W: Write>(
     let serial_number = format!("urn:uuid:{}", Uuid::new_v4());
     writer.write_all(b"{\n")?;
     writer.write_all(b"  \"bomFormat\": \"CycloneDX\",\n")?;
-    writer.write_all(format!("  \"specVersion\": \"{}\",\n", output_version.as_str()).as_bytes())?;
+    writer
+        .write_all(format!("  \"specVersion\": \"{}\",\n", output_version.as_str()).as_bytes())?;
     writer.write_all(format!("  \"serialNumber\": \"{}\",\n", serial_number).as_bytes())?;
     writer.write_all(b"  \"version\": 1,\n")?;
 
@@ -254,7 +261,9 @@ fn pass_3_extract_vulnerabilities<R: Read, W: Write>(
         // Write complete VEX document structure
         writer.write_all(b"{\n")?;
         writer.write_all(b"  \"bomFormat\": \"CycloneDX\",\n")?;
-        writer.write_all(format!("  \"specVersion\": \"{}\",\n", output_version.as_str()).as_bytes())?;
+        writer.write_all(
+            format!("  \"specVersion\": \"{}\",\n", output_version.as_str()).as_bytes(),
+        )?;
         writer.write_all(format!("  \"serialNumber\": \"{}\",\n", serial_number).as_bytes())?;
         writer.write_all(b"  \"version\": 1,\n")?;
 

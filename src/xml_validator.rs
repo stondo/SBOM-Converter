@@ -47,7 +47,7 @@ pub enum XmlValidationError {
 pub struct ValidationResult {
     /// Whether the XML is valid according to the schema
     pub valid: bool,
-    
+
     /// Validation messages (errors, warnings)
     pub messages: Vec<String>,
 }
@@ -88,15 +88,15 @@ pub fn validate_xml_wellformedness(
     schema_version: &str,
 ) -> Result<ValidationResult, XmlValidationError> {
     let expected_namespace = format!("http://cyclonedx.org/schema/bom/{}", schema_version);
-    
+
     // Parse XML document
     let parser = Parser::default();
     let document = parser
         .parse_string(xml_content)
         .map_err(|e| XmlValidationError::XmlParseError(format!("{}", e)))?;
-    
+
     let mut result = ValidationResult::success();
-    
+
     // Check namespace
     if let Some(root) = document.get_root_element() {
         if let Some(ns) = root.get_namespace() {
@@ -114,7 +114,7 @@ pub fn validate_xml_wellformedness(
             ));
         }
     }
-    
+
     Ok(result)
 }
 
@@ -180,14 +180,14 @@ fn validate_xml_with_xsd(
     schemas_dir: impl AsRef<Path>,
 ) -> Result<ValidationResult, XmlValidationError> {
     let schemas_dir = schemas_dir.as_ref();
-    
+
     // Build expected namespace URI
     let expected_namespace = format!("http://cyclonedx.org/schema/bom/{}", schema_version);
-    
+
     // Construct schema file paths
     let bom_schema_path = schemas_dir.join(format!("bom-{}.xsd", schema_version));
     let spdx_schema_path = schemas_dir.join("spdx.xsd");
-    
+
     // Check if schema files exist
     if !bom_schema_path.exists() {
         return Err(XmlValidationError::SchemaFileError(format!(
@@ -195,37 +195,38 @@ fn validate_xml_with_xsd(
             bom_schema_path.display()
         )));
     }
-    
+
     if !spdx_schema_path.exists() {
         return Err(XmlValidationError::SchemaFileError(format!(
             "SPDX schema file not found: {}",
             spdx_schema_path.display()
         )));
     }
-    
+
     // Parse XSD schema
-    let mut schema_parser = SchemaParserContext::from_file(bom_schema_path.to_str().ok_or_else(|| {
-        XmlValidationError::SchemaFileError("Invalid UTF-8 in schema path".to_string())
-    })?);
-    
+    let mut schema_parser =
+        SchemaParserContext::from_file(bom_schema_path.to_str().ok_or_else(|| {
+            XmlValidationError::SchemaFileError("Invalid UTF-8 in schema path".to_string())
+        })?);
+
     // Create validation context from the parser
-    let mut validation_context = SchemaValidationContext::from_parser(&mut schema_parser)
-        .map_err(|errors| {
+    let mut validation_context =
+        SchemaValidationContext::from_parser(&mut schema_parser).map_err(|errors| {
             let messages: Vec<String> = errors.iter().map(|e| format!("{:?}", e)).collect();
             XmlValidationError::SchemaParseError(messages.join("; "))
         })?;
-    
+
     // Parse XML document
     let parser = Parser::default();
     let document = parser
         .parse_string(xml_content)
         .map_err(|e| XmlValidationError::XmlParseError(format!("{}", e)))?;
-    
+
     // Validate against schema
     let validation_result = validation_context.validate_document(&document);
-    
+
     let mut result = ValidationResult::success();
-    
+
     // Check validation result
     match validation_result {
         Ok(_) => {
@@ -253,7 +254,7 @@ fn validate_xml_with_xsd(
             }
         }
     }
-    
+
     Ok(result)
 }
 
@@ -274,7 +275,7 @@ pub fn validate_xml_file(
     schemas_dir: impl AsRef<Path>,
 ) -> Result<ValidationResult, XmlValidationError> {
     let xml_path = xml_path.as_ref();
-    
+
     let xml_content = std::fs::read_to_string(xml_path).map_err(|e| {
         XmlValidationError::XmlParseError(format!(
             "Failed to read XML file {}: {}",
@@ -282,7 +283,7 @@ pub fn validate_xml_file(
             e
         ))
     })?;
-    
+
     validate_xml_string(&xml_content, schema_version, schemas_dir)
 }
 
@@ -314,7 +315,10 @@ mod tests {
             }
         }
         assert!(result.valid, "Expected valid XML");
-        assert!(result.messages.is_empty(), "Expected no validation messages");
+        assert!(
+            result.messages.is_empty(),
+            "Expected no validation messages"
+        );
     }
 
     #[test]
@@ -329,7 +333,10 @@ mod tests {
         let result = validate_xml_string(xml, "1.6", "schemas");
         assert!(result.is_ok());
         let result = result.unwrap();
-        assert!(!result.valid, "Expected invalid XML due to namespace mismatch");
+        assert!(
+            !result.valid,
+            "Expected invalid XML due to namespace mismatch"
+        );
         assert!(!result.messages.is_empty(), "Expected validation messages");
     }
 

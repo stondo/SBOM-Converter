@@ -356,6 +356,6 @@ fn test_version_ignored_for_cdx_to_spdx() {
     // Verify it has SPDX structure
     assert!(output_json.get("spdxVersion").is_some() || output_json.get("@context").is_some());
     assert!(output_json.get("elements").is_some() || output_json.get("@graph").is_some());
-    
+
     // The key point: conversion succeeded and --output-version was ignored
 }

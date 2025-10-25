@@ -7,8 +7,8 @@ use serde_json::Value;
 /// SBOM format type
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SbomFormat {
-    CycloneDx(String),  // version string
-    Spdx(String),       // version string
+    CycloneDx(String), // version string
+    Spdx(String),      // version string
     Unknown,
 }
 
@@ -34,8 +34,11 @@ impl SbomFormat {
     pub fn has_schema(&self) -> bool {
         match self {
             SbomFormat::CycloneDx(v) => {
-                v.starts_with("1.3") || v.starts_with("1.4") || 
-                v.starts_with("1.5") || v.starts_with("1.6") || v.starts_with("1.7")
+                v.starts_with("1.3")
+                    || v.starts_with("1.4")
+                    || v.starts_with("1.5")
+                    || v.starts_with("1.6")
+                    || v.starts_with("1.7")
             }
             SbomFormat::Spdx(v) => v.starts_with("3.0") || v.starts_with("2."),
             SbomFormat::Unknown => false,
@@ -180,9 +183,6 @@ mod tests {
             format_description(&SbomFormat::Spdx("3.0".to_string())),
             "SPDX 3.0"
         );
-        assert_eq!(
-            format_description(&SbomFormat::Unknown),
-            "Unknown format"
-        );
+        assert_eq!(format_description(&SbomFormat::Unknown), "Unknown format");
     }
 }

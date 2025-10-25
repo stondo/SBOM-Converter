@@ -5,7 +5,7 @@ use colored::Colorize;
 use sbom_converter::cdx_version::CdxVersion;
 use sbom_converter::errors::ConverterError;
 use sbom_converter::formats::Format;
-use sbom_converter::validation::{validate_cdx, validate_spdx, ValidationIssue};
+use sbom_converter::validation::{ValidationIssue, validate_cdx, validate_spdx};
 use sbom_converter::{Config, ConversionDirection};
 use std::fs;
 use std::path::PathBuf;
@@ -122,7 +122,12 @@ enum Command {
         #[arg(long, help = "Disable colored output")]
         no_color: bool,
 
-        #[arg(long, value_enum, help = "Output format for validation report", default_value = "text")]
+        #[arg(
+            long,
+            value_enum,
+            help = "Output format for validation report",
+            default_value = "text"
+        )]
         report_format: OutputFormat,
 
         #[arg(long, help = "Validate against JSON schema")]
@@ -215,27 +220,27 @@ fn setup_logging(verbose: bool) {
 }
 
 /// Validate an SBOM file (JSON or XML format)
-/// 
+///
 /// # Validation Approach
-/// 
+///
 /// This tool uses format-aware validation:
-/// 
+///
 /// ## JSON Files
 /// - **Structural validation**: Parse JSON and validate against internal models
 /// - **Schema validation** (with `--schema`): Validate against JSON Schema (e.g., bom-1.6.schema.json)
 /// - Full validation matches CycloneDX CLI behavior
-/// 
+///
 /// ## XML Files  
 /// - **Structural validation**: Parse XML and validate against internal models
 /// - **XSD schema validation** (with `--schema`): Validate using libxml2 against XSD schemas (e.g., bom-1.6.xsd)
 /// - Matches CycloneDX CLI validation approach using XSD
-/// 
+///
 /// ## Implementation
 /// - **XML validation** uses libxml2 bindings for native XSD schema validation
 /// - Validates namespace URI matches expected CycloneDX namespace
 /// - Provides detailed error messages for schema violations
 /// - Requires libxml2-devel and clang-devel system packages for building
-/// 
+///
 /// ## Reference
 /// - CycloneDX CLI validates JSON with JSON Schema and XML with XSD schemas
 /// - See: https://github.com/CycloneDX/cyclonedx-dotnet-library/blob/main/src/CycloneDX.Core/Xml/Validator.cs
@@ -248,12 +253,12 @@ fn run_validate(
     schema: bool,
     show_version: bool,
 ) -> Result<(), ConverterError> {
-    use sbom_converter::version_detection::{detect_format, format_description};
     use sbom_converter::formats::Format;
+    use sbom_converter::version_detection::{detect_format, format_description};
 
     // Detect input format (XML or JSON)
     let input_format = Format::from_extension(&input).unwrap_or(Format::Json);
-    
+
     // Read the file content
     let content = fs::read_to_string(&input)
         .map_err(|e| ConverterError::Io(e, format!("Failed to read file: {}", input.display())))?;
@@ -267,13 +272,13 @@ fn run_validate(
             if !matches!(output_format, OutputFormat::Json) && !no_color {
                 println!("{}", "ℹ Validating XML structure...".cyan());
             }
-            
+
             let xml_reader = std::io::BufReader::new(content.as_bytes());
-            
+
             // Parse XML to CdxDocument - this validates XML well-formedness and structure
             let cdx_doc = sbom_converter::formats::cdx::xml::parse(xml_reader)
                 .map_err(|e| ConverterError::ParseError(format!("Invalid XML: {}", e)))?;
-            
+
             // Convert to JSON representation for metadata extraction
             sbom_converter::formats::cdx::converter::document_to_json(&cdx_doc)
         }
@@ -364,13 +369,21 @@ fn run_validate(
                         match validate_against_schema(&value, &schema_path) {
                             Ok(()) => {
                                 if !matches!(output_format, OutputFormat::Json) {
-                                    println!("{}", "✓ JSON Schema validation passed".green().bold());
+                                    println!(
+                                        "{}",
+                                        "✓ JSON Schema validation passed".green().bold()
+                                    );
                                 }
                             }
                             Err(e) => {
                                 report.add_issue(
-                                    ValidationIssue::error(format!("Schema validation failed: {}", e))
-                                        .with_suggestion("Check the file against the official JSON schema"),
+                                    ValidationIssue::error(format!(
+                                        "Schema validation failed: {}",
+                                        e
+                                    ))
+                                    .with_suggestion(
+                                        "Check the file against the official JSON schema",
+                                    ),
                                 );
                             }
                         }
@@ -385,18 +398,20 @@ fn run_validate(
                     }
                 } else {
                     report.add_issue(
-                        ValidationIssue::warning("No JSON schema available for this format/version")
-                            .with_suggestion("Structural validation only"),
+                        ValidationIssue::warning(
+                            "No JSON schema available for this format/version",
+                        )
+                        .with_suggestion("Structural validation only"),
                     );
                 }
             }
             Format::Xml => {
                 // XML XSD validation
                 use sbom_converter::xml_validator;
-                
+
                 // Extract schema version from detected format
                 let schema_version = detected.version().unwrap_or("1.6");
-                
+
                 match xml_validator::validate_xml_string(&content, schema_version, "schemas") {
                     Ok(validation_result) => {
                         if validation_result.valid {
@@ -405,16 +420,19 @@ fn run_validate(
                             }
                         } else {
                             for msg in validation_result.messages {
-                                report.add_issue(
-                                    ValidationIssue::error(format!("XSD validation: {}", msg))
-                                );
+                                report.add_issue(ValidationIssue::error(format!(
+                                    "XSD validation: {}",
+                                    msg
+                                )));
                             }
                         }
                     }
                     Err(e) => {
                         report.add_issue(
                             ValidationIssue::error(format!("XSD validation error: {}", e))
-                                .with_suggestion("Check that schema files are available in schemas/ directory")
+                                .with_suggestion(
+                                    "Check that schema files are available in schemas/ directory",
+                                ),
                         );
                     }
                 }
@@ -425,9 +443,9 @@ fn run_validate(
     // Output report
     match output_format {
         OutputFormat::Json => {
-            let json = report
-                .to_json()
-                .map_err(|e| ConverterError::SerializationError(format!("Failed to serialize report: {}", e)))?;
+            let json = report.to_json().map_err(|e| {
+                ConverterError::SerializationError(format!("Failed to serialize report: {}", e))
+            })?;
             println!("{}", json);
         }
         OutputFormat::Text => {
@@ -455,8 +473,8 @@ fn validate_against_schema(
     value: &serde_json::Value,
     schema_path: &std::path::Path,
 ) -> Result<(), String> {
-    let schema_content = fs::read_to_string(schema_path)
-        .map_err(|e| format!("Failed to read schema: {}", e))?;
+    let schema_content =
+        fs::read_to_string(schema_path).map_err(|e| format!("Failed to read schema: {}", e))?;
 
     let schema: serde_json::Value =
         serde_json::from_str(&schema_content).map_err(|e| format!("Invalid schema JSON: {}", e))?;
@@ -563,7 +581,15 @@ fn run_app() -> Result<(), ConverterError> {
             report_format,
             schema,
             show_version,
-        }) => run_validate(input, format, fail_on_errors, no_color, report_format, schema, show_version),
+        }) => run_validate(
+            input,
+            format,
+            fail_on_errors,
+            no_color,
+            report_format,
+            schema,
+            show_version,
+        ),
         None => {
             // Legacy mode: no subcommand, use old flags
             if let (Some(input), Some(output), Some(direction)) =

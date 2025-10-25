@@ -942,13 +942,16 @@ We follow a **Git Flow** branching model:
 1. Fork the repository
 2. Clone your fork: `git clone https://github.com/YOUR-USERNAME/SBOM-Converter.git`
 3. Create a feature branch: `git checkout -b feature/my-new-feature develop`
-4. Make your changes and add tests
-5. Run tests: `cargo test`
-6. Run linter: `cargo clippy -- -D warnings`
-7. Format code: `cargo fmt`
-8. Commit changes with clear messages
-9. Push to your fork: `git push origin feature/my-new-feature`
-10. Open a Pull Request to the `develop` branch
+4. **Set up Git hooks**: `./scripts/setup-hooks.sh` (runs `cargo fmt` before commits)
+5. Make your changes and add tests
+6. Run tests: `cargo test`
+7. Run linter: `cargo clippy -- -D warnings`
+8. Format code: `cargo fmt` (or let the pre-commit hook do it)
+9. Commit changes with clear messages
+10. Push to your fork: `git push origin feature/my-new-feature`
+11. Open a Pull Request to the `develop` branch
+
+**Pre-commit Hook:** The setup script installs a Git hook that automatically checks code formatting and runs clippy before each commit, ensuring code quality standards are maintained.
 
 For detailed contribution guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
