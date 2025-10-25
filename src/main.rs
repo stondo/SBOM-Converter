@@ -180,7 +180,7 @@ enum Command {
             help = "Output format for diff report",
             default_value = "text"
         )]
-        output_format: OutputFormat,
+        report_format: OutputFormat,
 
         #[arg(long, value_name = "FILE", help = "Write diff report to file")]
         output: Option<PathBuf>,
@@ -684,7 +684,7 @@ fn run_merge(
 fn run_diff(
     file1: PathBuf,
     file2: PathBuf,
-    output_format: OutputFormat,
+    report_format: OutputFormat,
     output: Option<PathBuf>,
     diff_only: bool,
 ) -> Result<(), ConverterError> {
@@ -698,7 +698,7 @@ fn run_diff(
     let diff_report = diff_sboms(&file1, &file2)?;
 
     // Generate output based on format
-    let output_content = match output_format {
+    let output_content = match report_format {
         OutputFormat::Text => diff_report.format_text(diff_only),
         OutputFormat::Json => diff_report.format_json()?,
     };
@@ -770,10 +770,10 @@ fn run_app() -> Result<(), ConverterError> {
         Some(Command::Diff {
             file1,
             file2,
-            output_format,
+            report_format,
             output,
             diff_only,
-        }) => run_diff(file1, file2, output_format, output, diff_only),
+        }) => run_diff(file1, file2, report_format, output, diff_only),
         None => {
             // Legacy mode: no subcommand, use old flags
             if let (Some(input), Some(output), Some(direction)) =

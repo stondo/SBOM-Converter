@@ -89,7 +89,25 @@ pub fn detect_format(value: &Value) -> SbomFormat {
         return SbomFormat::Spdx(version.to_string());
     }
 
-    // Check for SPDX 3.0 (different structure)
+    // Check for SPDX 3.0 (different structure with @graph)
+    if let Some(graph) = value.get("@graph").and_then(|g| g.as_array()) {
+        // Look for SpdxDocument in the graph
+        for element in graph {
+            if let Some(elem_type) = element.get("type").and_then(|t| t.as_str()) {
+                if elem_type.contains("SpdxDocument") || elem_type.contains("Document") {
+                    if let Some(version) = element.get("spdxVersion").and_then(|v| v.as_str()) {
+                        // Strip "SPDX-" prefix if present
+                        let version = version.strip_prefix("SPDX-").unwrap_or(version);
+                        return SbomFormat::Spdx(version.to_string());
+                    }
+                    // Default to 3.0.1 if found SpdxDocument but no version
+                    return SbomFormat::Spdx("3.0.1".to_string());
+                }
+            }
+        }
+    }
+
+    // Check for SPDX 3.0 (alternative structure)
     if let Some(_spdx_id) = value.get("spdxId") {
         // SPDX 3.0 uses spdxId instead of SPDXID
         if value.get("creationInfo").is_some() {
