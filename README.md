@@ -358,6 +358,15 @@ sbom-converter merge \
   --output all-services.json
 ```
 
+**Merge to XML output (CycloneDX only):**
+
+```bash
+sbom-converter merge \
+  --inputs app1.json app2.json \
+  --output merged.xml \
+  --output-format xml
+```
+
 #### Merge Behavior
 
 **What gets merged:**
@@ -378,7 +387,8 @@ sbom-converter merge \
 - All input files must be the same format (all CycloneDX or all SPDX)
 - Mixing formats will fail with an error
 - Minimum 2 input files required
-- Currently supports JSON output only (XML coming soon)
+- Supports both JSON and XML output for CycloneDX
+- SPDX only supports JSON/JSON-LD output (no XML format in SPDX specification)
 
 ### Diff Command
 
