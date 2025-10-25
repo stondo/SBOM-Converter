@@ -5,6 +5,80 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-10-25
+
+### Added
+
+#### Diff Command
+- **New `diff` command** for comparing two SBOM files and generating detailed difference reports
+- Comprehensive diff reporting with added, removed, modified, and unchanged components
+- Support for both text (colored) and JSON output formats
+- `--diff-only` flag to show only differences, hiding unchanged components
+- Component identification using purl, bom-ref/spdxId, or name+version
+- Dependency and vulnerability change tracking
+- Full support for both CycloneDX and SPDX 3.0.1 formats
+- 11 comprehensive test cases covering all diff scenarios
+
+#### XML Format Support
+- **XML output support for merge command** (CycloneDX only)
+- JSON to XML conversion using quick-xml library with serialize feature
+- Proper XML attribute transformation (@type, @bom-ref, @ref)
+- Full namespace and schema validation support
+- Manual XML structure building for CdxDocument serialization
+- Test coverage for XML merge functionality
+
+#### Multi-Version CycloneDX Support
+- Support for CycloneDX versions 1.3, 1.4, 1.5, 1.6 (default), and 1.7
+- `--output-version` flag to specify desired CycloneDX version
+- Version-specific schema validation
+- Backward compatibility with older CycloneDX versions
+
+#### Enhanced SPDX 3.0.1 Support
+- Improved JSON-LD format detection with @graph array support
+- Automatic detection of SpdxDocument type elements in @graph structures
+- Better handling of both simple JSON and JSON-LD formats
+- Enhanced version detection with fallback to 3.0.1
+
+### Changed
+- Enhanced `merge` command documentation to reflect XML support
+- Updated README with comprehensive diff command documentation (~110 lines)
+- Improved CLI parameter naming (report_format in diff to avoid conflicts)
+- Enhanced error messages for format mismatches in diff operations
+
+### Fixed
+- CLI parameter conflict between diff command and global options
+- SPDX 3.0.1 JSON-LD detection failure with @graph structures
+- JSON to XML attribute transformation for CycloneDX serialization
+- Unused import warnings in merge module
+
+### Performance
+- All 73 tests passing (35 lib unit tests + 38 integration tests)
+- Zero compiler warnings after cleanup
+- Maintained streaming architecture efficiency
+- Pre-commit hook enforced formatting on all commits
+
+### Documentation
+- Added comprehensive diff command documentation with examples
+- Updated merge documentation to reflect XML support
+- Enhanced competitive positioning documentation
+- Added format compatibility matrix
+- Documented data preservation guarantees for packages-only mode
+
+### Testing
+- 11 new diff command tests covering:
+  - Identical SBOM comparison
+  - Added/removed components tracking
+  - Modified component detection
+  - JSON output format validation
+  - File output functionality
+  - Diff-only filtering
+  - SPDX format support
+  - Mixed format error handling
+  - Dependency change tracking
+  - Vulnerability comparison
+- XML merge test validation
+- Total test coverage: 73 tests (100% pass rate)
+
 ## [1.0.0] - 2025-10-24
 
 ### Added
@@ -94,4 +168,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[1.1.0]: https://github.com/stondo/SBOM-Converter/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/stondo/SBOM-Converter/releases/tag/v1.0.0

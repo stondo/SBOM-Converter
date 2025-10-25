@@ -4,7 +4,7 @@
 [![Release](https://github.com/stondo/SBOM-Converter/workflows/Release/badge.svg)](https://github.com/stondo/SBOM-Converter/actions/workflows/release.yml)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](https://github.com/stondo/SBOM-Converter#license)
 [![Rust Version](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](https://www.rust-lang.org)
-[![Version](https://img.shields.io/badge/version-1.0.0-green.svg)](https://github.com/stondo/SBOM-Converter/releases)
+[![Version](https://img.shields.io/badge/version-1.1.0-green.svg)](https://github.com/stondo/SBOM-Converter/releases)
 
 A high-performance, memory-efficient Rust tool for bidirectional conversion between **SPDX 3.0.1** and **CycloneDX 1.3-1.7** SBOM formats. Designed to handle extremely large SBOM files (tested with 2.5GB files containing nearly 2 million elements) using streaming architecture with constant memory footprint.
 
@@ -93,7 +93,7 @@ Extract and run:
 
 ```bash
 # Linux/macOS
-tar xzf sbom-converter-linux-x86_64-v1.0.0.tar.gz
+tar xzf sbom-converter-linux-x86_64-v1.1.0.tar.gz
 ./sbom-converter-linux-x86_64 --help
 
 # Windows
@@ -1157,7 +1157,7 @@ This project follows [Semantic Versioning](https://semver.org/):
 - **MINOR** version for backwards-compatible functionality additions
 - **PATCH** version for backwards-compatible bug fixes
 
-Current version: **1.0.0**
+Current version: **1.1.0**
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
 
