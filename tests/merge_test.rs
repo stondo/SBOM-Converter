@@ -503,3 +503,69 @@ fn test_merge_mixed_formats_fails() {
         .assert()
         .failure();
 }
+
+#[test]
+fn test_merge_xml_output() {
+    let dir = tempdir().unwrap();
+    let input1 = dir.path().join("input1.json");
+    let input2 = dir.path().join("input2.json");
+    let output = dir.path().join("merged.xml");
+
+    let bom1 = json!({
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.6",
+        "version": 1,
+        "serialNumber": "urn:uuid:bom1",
+        "components": [
+            {
+                "type": "library",
+                "name": "lodash",
+                "version": "4.17.21",
+                "purl": "pkg:npm/lodash@4.17.21"
+            }
+        ]
+    });
+
+    let bom2 = json!({
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.6",
+        "version": 1,
+        "serialNumber": "urn:uuid:bom2",
+        "components": [
+            {
+                "type": "library",
+                "name": "express",
+                "version": "4.18.0",
+                "purl": "pkg:npm/express@4.18.0"
+            }
+        ]
+    });
+
+    serde_json::to_writer_pretty(&File::create(&input1).unwrap(), &bom1).unwrap();
+    serde_json::to_writer_pretty(&File::create(&input2).unwrap(), &bom2).unwrap();
+
+    // Merge with XML output format
+    get_cmd()
+        .arg("merge")
+        .arg("--inputs")
+        .arg(&input1)
+        .arg(&input2)
+        .arg("--output")
+        .arg(&output)
+        .arg("--output-format")
+        .arg("xml")
+        .assert()
+        .success();
+
+    // Verify output file exists and contains XML
+    let merged_content = std::fs::read_to_string(&output).unwrap();
+    assert!(merged_content.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"));
+    assert!(merged_content.contains("<bom"));
+    assert!(merged_content.contains("xmlns=\"http://cyclonedx.org/schema/bom/1.6\""));
+    assert!(merged_content.contains("bomFormat=\"CycloneDX\""));
+    assert!(merged_content.contains("<components>"));
+    assert!(merged_content.contains("<component"));
+    assert!(merged_content.contains("lodash"));
+    assert!(merged_content.contains("express"));
+    assert!(merged_content.contains("</bom>"));
+}

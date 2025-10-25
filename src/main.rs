@@ -668,10 +668,27 @@ fn run_merge(
             })?;
         }
         Format::Xml => {
-            // For now, XML output is not supported for merge
-            return Err(ConverterError::ParseError(
-                "XML output format not yet supported for merge command".to_string(),
-            ));
+            // Convert to CdxDocument and write as XML
+            match detected_format {
+                sbom_converter::version_detection::SbomFormat::CycloneDx(_) => {
+                    use sbom_converter::formats::cdx::xml::write;
+                    use sbom_converter::merge::value_to_cdx_document;
+
+                    let cdx_doc = value_to_cdx_document(&merged_bom)?;
+                    write(output_file, &cdx_doc)?;
+                }
+                sbom_converter::version_detection::SbomFormat::Spdx(_) => {
+                    return Err(ConverterError::ParseError(
+                        "XML output format not supported for SPDX (SPDX uses JSON/JSON-LD only)"
+                            .to_string(),
+                    ));
+                }
+                _ => {
+                    return Err(ConverterError::ParseError(
+                        "Unable to determine format for XML output".to_string(),
+                    ));
+                }
+            }
         }
     }
 

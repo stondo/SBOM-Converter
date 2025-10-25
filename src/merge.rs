@@ -350,6 +350,141 @@ fn get_spdx_element_key(element: &Value) -> String {
     format!("{}@{}", name, version)
 }
 
+/// Convert merged CycloneDX JSON Value to CdxDocument for XML serialization  
+pub fn value_to_cdx_document(
+    value: &Value,
+) -> Result<crate::formats::cdx::CdxDocument, ConverterError> {
+    use crate::formats::cdx::document::{
+        CdxComponent, CdxComponents, CdxDependencies, CdxDependency, CdxDocument,
+        CdxVulnerabilities, CdxVulnerability,
+    };
+
+    // The JSON structure uses "type" but XML struct uses "@type"
+    // We need to transform the JSON to match XML expectations
+    let mut xml_value = value.clone();
+
+    // Transform components: "type" -> "@type", add "@" prefix to attributes
+    if let Some(components) = xml_value
+        .get_mut("components")
+        .and_then(|c| c.as_array_mut())
+    {
+        for component in components {
+            if let Some(obj) = component.as_object_mut() {
+                // Rename "type" to "@type"
+                if let Some(type_val) = obj.remove("type") {
+                    obj.insert("@type".to_string(), type_val);
+                }
+                // Rename "bom-ref" to "@bom-ref"
+                if let Some(bom_ref) = obj.remove("bom-ref") {
+                    obj.insert("@bom-ref".to_string(), bom_ref);
+                }
+            }
+        }
+    }
+
+    // Transform dependencies structure for XML
+    if let Some(deps) = xml_value
+        .get_mut("dependencies")
+        .and_then(|d| d.as_array_mut())
+    {
+        for dep in deps {
+            if let Some(obj) = dep.as_object_mut() {
+                // Rename "ref" to "@ref"
+                if let Some(ref_val) = obj.remove("ref") {
+                    obj.insert("@ref".to_string(), ref_val);
+                }
+                // Transform dependsOn array to proper structure
+                if let Some(depends_on) = obj.get_mut("dependsOn") {
+                    if let Some(arr) = depends_on.as_array() {
+                        let deps_vec: Vec<Value> = arr.iter().map(|d| json!({"@ref": d})).collect();
+                        *depends_on = json!({"dependency": deps_vec});
+                    }
+                }
+            }
+        }
+    }
+
+    // Build CdxDocument manually
+    let json_bom = xml_value.as_object().ok_or_else(|| {
+        ConverterError::SerializationError("BOM is not a valid JSON object".to_string())
+    })?;
+
+    let mut doc = CdxDocument {
+        xmlns: Some("http://cyclonedx.org/schema/bom/1.6".to_string()),
+        bom_format: Some("CycloneDX".to_string()),
+        spec_version: json_bom
+            .get("specVersion")
+            .and_then(|v| v.as_str())
+            .map(String::from),
+        version: json_bom
+            .get("version")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(1) as u32,
+        serial_number: json_bom
+            .get("serialNumber")
+            .and_then(|v| v.as_str())
+            .map(String::from),
+        metadata: None,
+        components: None,
+        dependencies: None,
+        vulnerabilities: None,
+    };
+
+    // Handle components
+    if let Some(components_array) = json_bom.get("components").and_then(|c| c.as_array()) {
+        let components: Result<Vec<CdxComponent>, _> = components_array
+            .iter()
+            .map(|c| serde_json::from_value(c.clone()))
+            .collect();
+
+        doc.components = Some(CdxComponents {
+            components: components.map_err(|e| {
+                ConverterError::SerializationError(format!("Failed to parse components: {}", e))
+            })?,
+        });
+    }
+
+    // Handle dependencies
+    if let Some(deps_array) = json_bom.get("dependencies").and_then(|d| d.as_array()) {
+        let dependencies: Result<Vec<CdxDependency>, _> = deps_array
+            .iter()
+            .map(|d| serde_json::from_value(d.clone()))
+            .collect();
+
+        doc.dependencies = Some(CdxDependencies {
+            dependencies: dependencies.map_err(|e| {
+                ConverterError::SerializationError(format!("Failed to parse dependencies: {}", e))
+            })?,
+        });
+    }
+
+    // Handle vulnerabilities
+    if let Some(vulns_array) = json_bom.get("vulnerabilities").and_then(|v| v.as_array()) {
+        let vulnerabilities: Result<Vec<CdxVulnerability>, _> = vulns_array
+            .iter()
+            .map(|v| serde_json::from_value(v.clone()))
+            .collect();
+
+        doc.vulnerabilities = Some(CdxVulnerabilities {
+            vulnerabilities: vulnerabilities.map_err(|e| {
+                ConverterError::SerializationError(format!(
+                    "Failed to parse vulnerabilities: {}",
+                    e
+                ))
+            })?,
+        });
+    }
+
+    // Handle metadata
+    if let Some(metadata_val) = json_bom.get("metadata") {
+        doc.metadata = Some(serde_json::from_value(metadata_val.clone()).map_err(|e| {
+            ConverterError::SerializationError(format!("Failed to parse metadata: {}", e))
+        })?);
+    }
+
+    Ok(doc)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
