@@ -301,6 +301,85 @@ Validating: /tmp/test-cdx.xml
 Summary: 2 infos
 ```
 
+### Merge Command
+
+Combine multiple SBOM files into a single consolidated SBOM. The merge command intelligently deduplicates components and combines dependencies from all input files.
+
+```bash
+sbom-converter merge --inputs <FILE> <FILE>... --output <FILE> [OPTIONS]
+```
+
+#### Merge Options
+
+| Option | Description |
+|--------|-------------|
+| `--inputs <FILE>...` | Two or more input SBOM files to merge (required, minimum 2) |
+| `--output <FILE>` | Output file path for merged SBOM (required) |
+| `--dedup <STRATEGY>` | Deduplication strategy: `first` (default) or `latest` |
+| `--output-format <FORMAT>` | Output format: `json` or `xml` (auto-detected from extension) |
+
+#### Deduplication Strategies
+
+| Strategy | Behavior |
+|----------|----------|
+| **first** (default) | Keeps the first occurrence of duplicate components |
+| **latest** | Keeps the latest (last) occurrence of duplicate components |
+
+Components are identified by:
+
+1. **purl** (Package URL) - highest priority
+2. **bom-ref** (CycloneDX) or **spdxId** (SPDX) - fallback
+3. **name + version** - final fallback
+
+#### Merge Examples
+
+**Basic merge:**
+
+```bash
+sbom-converter merge \
+  --inputs sbom1.json sbom2.json \
+  --output merged.json
+```
+
+**Merge multiple files with latest strategy:**
+
+```bash
+sbom-converter merge \
+  --inputs project-a.json project-b.json project-c.json \
+  --output combined.json \
+  --dedup latest
+```
+
+**Merge using wildcards:**
+
+```bash
+sbom-converter merge \
+  --inputs services/*.json \
+  --output all-services.json
+```
+
+#### Merge Behavior
+
+**What gets merged:**
+
+- ✅ Components/packages from all files
+- ✅ Dependencies and relationships
+- ✅ Vulnerabilities (CycloneDX)
+- ✅ Metadata from first file
+
+**Deduplication:**
+
+- Duplicate components are identified by purl, bom-ref, or name+version
+- Dependencies are combined (union of all dependency relationships)
+- Strategy determines which component metadata to keep
+
+**Requirements:**
+
+- All input files must be the same format (all CycloneDX or all SPDX)
+- Mixing formats will fail with an error
+- Minimum 2 input files required
+- Currently supports JSON output only (XML coming soon)
+
 ## Schema Validation
 
 The tool supports optional JSON schema validation using the `--validate` flag. The schema files are bundled with the tool:
