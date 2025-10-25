@@ -6,12 +6,28 @@
 [![Rust Version](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](https://www.rust-lang.org)
 [![Version](https://img.shields.io/badge/version-1.0.0-green.svg)](https://github.com/stondo/SBOM-Converter/releases)
 
-A high-performance, memory-efficient Rust tool for bidirectional conversion between **SPDX 3.0.1** and **CycloneDX 1.6** SBOM formats. Designed to handle extremely large SBOM files (tested with 2.5GB files containing nearly 2 million elements) using streaming architecture with constant memory footprint.
+A high-performance, memory-efficient Rust tool for bidirectional conversion between **SPDX 3.0.1** and **CycloneDX 1.3-1.7** SBOM formats. Designed to handle extremely large SBOM files (tested with 2.5GB files containing nearly 2 million elements) using streaming architecture with constant memory footprint.
 
 **Supported Formats:**
 
-- **SPDX:** Version 3.0.1 (both simple JSON and JSON-LD/RDF formats)
-- **CycloneDX:** Version 1.6 (JSON only)
+- **SPDX:** Version 3.0.1 (both simple JSON and JSON-LD/RDF formats, plus XML)
+- **CycloneDX:** Versions 1.3, 1.4, 1.5, 1.6, 1.7 (JSON and XML formats)
+
+**Format Compatibility Matrix:**
+
+| Input Format | Output Format | Versions Supported | Schema Validation |
+|--------------|---------------|-------------------|-------------------|
+| SPDX 3.0.1 JSON/JSON-LD | CycloneDX JSON | 1.3, 1.4, 1.5, 1.6 (default), 1.7 | ✅ JSON Schema |
+| SPDX 3.0.1 XML | CycloneDX JSON | 1.3, 1.4, 1.5, 1.6 (default), 1.7 | ✅ XSD Schema |
+| CycloneDX JSON | SPDX 3.0.1 JSON-LD | 3.0.1 | ✅ JSON Schema |
+| CycloneDX XML | SPDX 3.0.1 XML | 3.0.1 | ✅ XSD Schema |
+
+**Competitive Advantages:**
+
+- **SPDX 3.0.1 Support**: Full support for the latest SPDX specification (most tools still only support SPDX 2.x)
+- **Multi-Version CycloneDX**: Support for all CycloneDX versions from 1.3 to 1.7
+- **XML Format Support**: Both input and output in XML format with XSD validation
+- **Streaming Architecture**: Handles multi-gigabyte files with constant memory usage
 
 **Validated With:**
 
@@ -114,13 +130,14 @@ sbom-converter --input <INPUT_FILE> --output <OUTPUT_FILE> --direction <DIRECTIO
 
 | Argument | Short | Required | Description |
 |----------|-------|----------|-------------|
-| `--input` | `-i` | Yes | Path to input SBOM file (JSON format) |
-| `--output` | `-o` | Yes | Path to output SBOM file (JSON format) |
+| `--input` | `-i` | Yes | Path to input SBOM file (JSON or XML format) |
+| `--output` | `-o` | Yes | Path to output SBOM file (JSON or XML format) |
 | `--direction` | `-d` | Yes | Conversion direction: `spdx-to-cdx` or `cdx-to-spdx` |
+| `--output-version` | | No | CycloneDX output version: `1.3`, `1.4`, `1.5`, `1.6` (default), `1.7` (ignored for SPDX output) |
 | `--packages-only` | | No | Only convert packages/libraries, skip individual files (SPDX→CDX only) |
 | `--split-vex` | | No | Split vulnerabilities into separate VEX file (SPDX→CDX only) |
 | `--verbose` | `-v` | No | Enable detailed logging output |
-| `--validate` | | No | Enable JSON schema validation (requires schemas/) |
+| `--validate` | | No | Enable schema validation (JSON Schema or XSD depending on format) |
 
 ### Examples
 
@@ -145,6 +162,26 @@ Filter out individual files, keeping only packages/libraries:
   --direction spdx-to-cdx \
   --packages-only \
   --verbose
+```
+
+#### Convert SPDX to CycloneDX with Specific Version
+
+Generate CycloneDX output in a specific version:
+
+```bash
+# Generate CycloneDX 1.3 output
+./target/release/sbom-converter \
+  --input sbom-spdx.json \
+  --output sbom-cdx-1.3.json \
+  --direction spdx-to-cdx \
+  --output-version 1.3
+
+# Generate CycloneDX 1.7 output (latest)
+./target/release/sbom-converter \
+  --input sbom-spdx.json \
+  --output sbom-cdx-1.7.json \
+  --direction spdx-to-cdx \
+  --output-version 1.7
 ```
 
 #### Convert SPDX to CycloneDX with Split VEX

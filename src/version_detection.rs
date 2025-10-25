@@ -33,7 +33,10 @@ impl SbomFormat {
     /// Check if the format is supported for schema validation
     pub fn has_schema(&self) -> bool {
         match self {
-            SbomFormat::CycloneDx(v) => v.starts_with("1.6") || v.starts_with("1.5") || v.starts_with("1.4"),
+            SbomFormat::CycloneDx(v) => {
+                v.starts_with("1.3") || v.starts_with("1.4") || 
+                v.starts_with("1.5") || v.starts_with("1.6") || v.starts_with("1.7")
+            }
             SbomFormat::Spdx(v) => v.starts_with("3.0") || v.starts_with("2."),
             SbomFormat::Unknown => false,
         }
@@ -42,9 +45,11 @@ impl SbomFormat {
     /// Get the schema file name for this format
     pub fn schema_file(&self) -> Option<&str> {
         match self {
+            SbomFormat::CycloneDx(v) if v.starts_with("1.7") => Some("cdx_1.7.schema.json"),
             SbomFormat::CycloneDx(v) if v.starts_with("1.6") => Some("cdx_1.6.schema.json"),
             SbomFormat::CycloneDx(v) if v.starts_with("1.5") => Some("cdx_1.5.schema.json"),
             SbomFormat::CycloneDx(v) if v.starts_with("1.4") => Some("cdx_1.4.schema.json"),
+            SbomFormat::CycloneDx(v) if v.starts_with("1.3") => Some("cdx_1.3.schema.json"),
             SbomFormat::Spdx(v) if v.starts_with("3.0") => Some("spdx_3.0.1.schema.json"),
             SbomFormat::Spdx(v) if v.starts_with("2.3") => Some("spdx_2.3.schema.json"),
             SbomFormat::Spdx(v) if v.starts_with("2.2") => Some("spdx_2.2.schema.json"),

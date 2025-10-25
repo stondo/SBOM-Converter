@@ -4,6 +4,7 @@
 //! conversion between CycloneDX and SPDX formats.
 
 // Make modules public within the crate but not necessarily public API
+pub mod cdx_version;
 pub mod converter_cdx_to_spdx;
 pub mod converter_spdx_to_cdx;
 pub mod errors;
@@ -16,6 +17,7 @@ pub mod validation;
 pub mod version_detection;
 pub mod xml_validator;
 
+use cdx_version::CdxVersion;
 use clap::ValueEnum;
 use errors::ConverterError;
 use log::info;
@@ -45,6 +47,7 @@ pub struct Config {
     pub split_vex: bool,
     pub packages_only: bool,
     pub skip_jsonld_validation: bool,
+    pub output_version: CdxVersion,
 }
 
 /// The main entry point for the conversion logic.
@@ -212,6 +215,7 @@ pub fn run(config: Config) -> Result<(), ConverterError> {
                 progress.clone(),
                 config.packages_only,
                 config.split_vex,
+                config.output_version,
             )?;
         }
     }

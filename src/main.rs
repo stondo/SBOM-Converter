@@ -2,6 +2,7 @@
 
 use clap::{Parser, Subcommand, ValueEnum};
 use colored::Colorize;
+use sbom_converter::cdx_version::CdxVersion;
 use sbom_converter::errors::ConverterError;
 use sbom_converter::formats::Format;
 use sbom_converter::validation::{validate_cdx, validate_spdx, ValidationIssue};
@@ -68,6 +69,15 @@ struct Cli {
         global = true
     )]
     skip_jsonld_validation: bool,
+
+    #[arg(
+        long,
+        value_enum,
+        help = "CycloneDX output version (ignored for SPDX output)",
+        default_value_t = CliCdxVersion::default(),
+        global = true
+    )]
+    output_version: CliCdxVersion,
 }
 
 #[derive(Subcommand, Debug)]
@@ -143,6 +153,39 @@ enum OutputFormat {
     Text,
     #[value(name = "json")]
     Json,
+}
+
+/// CLI wrapper for CycloneDX version
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum CliCdxVersion {
+    #[value(name = "1.3")]
+    V1_3,
+    #[value(name = "1.4")]
+    V1_4,
+    #[value(name = "1.5")]
+    V1_5,
+    #[value(name = "1.6")]
+    V1_6,
+    #[value(name = "1.7")]
+    V1_7,
+}
+
+impl From<CliCdxVersion> for CdxVersion {
+    fn from(cli: CliCdxVersion) -> Self {
+        match cli {
+            CliCdxVersion::V1_3 => CdxVersion::V1_3,
+            CliCdxVersion::V1_4 => CdxVersion::V1_4,
+            CliCdxVersion::V1_5 => CdxVersion::V1_5,
+            CliCdxVersion::V1_6 => CdxVersion::V1_6,
+            CliCdxVersion::V1_7 => CdxVersion::V1_7,
+        }
+    }
+}
+
+impl Default for CliCdxVersion {
+    fn default() -> Self {
+        Self::V1_6
+    }
 }
 
 #[derive(Debug, Clone, ValueEnum)]
@@ -443,6 +486,7 @@ fn run_convert(
     split_vex: bool,
     packages_only: bool,
     skip_jsonld_validation: bool,
+    output_version: CliCdxVersion,
 ) -> Result<(), ConverterError> {
     let direction = match direction {
         CliDirection::CdxToSpdx => ConversionDirection::CdxToSpdx,
@@ -480,6 +524,7 @@ fn run_convert(
         split_vex,
         packages_only,
         skip_jsonld_validation,
+        output_version: output_version.into(), // Convert CLI version to library version
     };
 
     sbom_converter::run(config)
@@ -508,6 +553,7 @@ fn run_app() -> Result<(), ConverterError> {
             cli.split_vex,
             cli.packages_only,
             cli.skip_jsonld_validation,
+            cli.output_version,
         ),
         Some(Command::Validate {
             input,
@@ -534,6 +580,7 @@ fn run_app() -> Result<(), ConverterError> {
                     cli.split_vex,
                     cli.packages_only,
                     cli.skip_jsonld_validation,
+                    cli.output_version,
                 )
             } else {
                 eprintln!("{}", "Error: Missing required arguments".red().bold());
