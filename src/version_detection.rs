@@ -73,13 +73,13 @@ impl SbomFormat {
 /// Detect the SBOM format and version from JSON content
 pub fn detect_format(value: &Value) -> SbomFormat {
     // Check for CycloneDX
-    if let Some(bom_format) = value.get("bomFormat").and_then(|v| v.as_str()) {
-        if bom_format == "CycloneDX" {
-            if let Some(spec_version) = value.get("specVersion").and_then(|v| v.as_str()) {
-                return SbomFormat::CycloneDx(spec_version.to_string());
-            }
-            return SbomFormat::CycloneDx("unknown".to_string());
+    if let Some(bom_format) = value.get("bomFormat").and_then(|v| v.as_str())
+        && bom_format == "CycloneDX"
+    {
+        if let Some(spec_version) = value.get("specVersion").and_then(|v| v.as_str()) {
+            return SbomFormat::CycloneDx(spec_version.to_string());
         }
+        return SbomFormat::CycloneDx("unknown".to_string());
     }
 
     // Check for SPDX
@@ -93,16 +93,16 @@ pub fn detect_format(value: &Value) -> SbomFormat {
     if let Some(graph) = value.get("@graph").and_then(|g| g.as_array()) {
         // Look for SpdxDocument in the graph
         for element in graph {
-            if let Some(elem_type) = element.get("type").and_then(|t| t.as_str()) {
-                if elem_type.contains("SpdxDocument") || elem_type.contains("Document") {
-                    if let Some(version) = element.get("spdxVersion").and_then(|v| v.as_str()) {
-                        // Strip "SPDX-" prefix if present
-                        let version = version.strip_prefix("SPDX-").unwrap_or(version);
-                        return SbomFormat::Spdx(version.to_string());
-                    }
-                    // Default to 3.0.1 if found SpdxDocument but no version
-                    return SbomFormat::Spdx("3.0.1".to_string());
+            if let Some(elem_type) = element.get("type").and_then(|t| t.as_str())
+                && (elem_type.contains("SpdxDocument") || elem_type.contains("Document"))
+            {
+                if let Some(version) = element.get("spdxVersion").and_then(|v| v.as_str()) {
+                    // Strip "SPDX-" prefix if present
+                    let version = version.strip_prefix("SPDX-").unwrap_or(version);
+                    return SbomFormat::Spdx(version.to_string());
                 }
+                // Default to 3.0.1 if found SpdxDocument but no version
+                return SbomFormat::Spdx("3.0.1".to_string());
             }
         }
     }

@@ -516,14 +516,14 @@ pub fn validate_spdx(value: &Value) -> ValidationReport {
 
     // Check for SPDX version
     if let Some(spdx_version) = obj.get("spdxVersion") {
-        if let Some(version) = spdx_version.as_str() {
-            if !version.starts_with("SPDX-") {
-                report.add_issue(
-                    ValidationIssue::error(format!("Invalid spdxVersion format: '{}'", version))
-                        .with_location("spdxVersion")
-                        .with_suggestion("Use format like 'SPDX-3.0'"),
-                );
-            }
+        if let Some(version) = spdx_version.as_str()
+            && !version.starts_with("SPDX-")
+        {
+            report.add_issue(
+                ValidationIssue::error(format!("Invalid spdxVersion format: '{}'", version))
+                    .with_location("spdxVersion")
+                    .with_suggestion("Use format like 'SPDX-3.0'"),
+            );
         }
     } else {
         report.add_issue(
