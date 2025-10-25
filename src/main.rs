@@ -136,6 +136,35 @@ enum Command {
         #[arg(long, help = "Show detected format and version")]
         show_version: bool,
     },
+
+    /// Merge multiple SBOM files into one
+    Merge {
+        #[arg(long, value_name = "FILE", required = true, num_args = 2..)]
+        inputs: Vec<PathBuf>,
+
+        #[arg(short, long, value_name = "FILE")]
+        output: PathBuf,
+
+        #[arg(
+            long,
+            value_enum,
+            help = "Output format (autodetect from output file extension if not specified)"
+        )]
+        output_format: Option<CliFormat>,
+
+        #[arg(
+            long,
+            value_enum,
+            help = "Output SBOM format type (cdx or spdx, required if format ambiguous)"
+        )]
+        output_type: Option<CliFormat>,
+
+        #[arg(
+            long,
+            help = "Deduplication strategy: first (keep first occurrence) or latest (keep latest)"
+        )]
+        dedup: Option<String>,
+    },
 }
 
 #[derive(Debug, Clone, ValueEnum)]
@@ -548,6 +577,40 @@ fn run_convert(
     sbom_converter::run(config)
 }
 
+fn run_merge(
+    inputs: Vec<PathBuf>,
+    output: PathBuf,
+    output_format: Option<CliFormat>,
+    output_type: Option<CliFormat>,
+    _dedup: Option<String>,
+) -> Result<(), ConverterError> {
+    println!("🔄 Merging {} SBOM files...", inputs.len());
+
+    // Detect output format from file extension if not specified
+    let output_format = match output_format {
+        Some(fmt) => match fmt {
+            CliFormat::Json => Format::Json,
+            CliFormat::Xml => Format::Xml,
+            _ => Format::Json,
+        },
+        None => Format::from_extension(&output).unwrap_or(Format::Json),
+    };
+
+    // TODO: Implement actual merge logic
+    // For now, just a placeholder
+    println!("  Input files:");
+    for input in &inputs {
+        println!("    - {}", input.display());
+    }
+    println!("  Output file: {}", output.display());
+    println!("  Output format: {:?}", output_format);
+    println!("  Output type: {:?}", output_type);
+
+    Err(ConverterError::ParseError(
+        "Merge command not yet implemented".to_string(),
+    ))
+}
+
 fn run_app() -> Result<(), ConverterError> {
     let cli = Cli::parse();
 
@@ -590,6 +653,13 @@ fn run_app() -> Result<(), ConverterError> {
             schema,
             show_version,
         ),
+        Some(Command::Merge {
+            inputs,
+            output,
+            output_format,
+            output_type,
+            dedup,
+        }) => run_merge(inputs, output, output_format, output_type, dedup),
         None => {
             // Legacy mode: no subcommand, use old flags
             if let (Some(input), Some(output), Some(direction)) =
