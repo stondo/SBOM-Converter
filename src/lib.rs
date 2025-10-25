@@ -257,10 +257,10 @@ pub fn run(config: Config) -> Result<(), ConverterError> {
     }
 
     // --- 6. Clean up XML input temp file ---
-    if let Some(temp_input) = temp_input_file {
-        if temp_input.exists() {
-            let _ = std::fs::remove_file(&temp_input);
-        }
+    if let Some(temp_input) = temp_input_file
+        && temp_input.exists()
+    {
+        let _ = std::fs::remove_file(&temp_input);
     }
 
     info!(

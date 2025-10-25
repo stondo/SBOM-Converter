@@ -1,13 +1,17 @@
 use sbom_converter::formats::cdx::{CdxDocument, xml};
-use std::fs::File;
-use std::io::BufReader;
+use std::io::Cursor;
 
 #[test]
 fn test_parse_minimal_cdx_xml() {
-    let xml_path = "test-data/minimal-cdx.xml";
-    let file = File::open(xml_path).expect("Failed to open test XML file");
-    let reader = BufReader::new(file);
+    // Create minimal CDX XML inline
+    let xml_content = r#"<?xml version="1.0" encoding="UTF-8"?>
+<bom xmlns="http://cyclonedx.org/schema/bom/1.6" version="1">
+  <metadata>
+    <timestamp>2024-01-01T00:00:00Z</timestamp>
+  </metadata>
+</bom>"#;
 
+    let reader = Cursor::new(xml_content.as_bytes());
     let result = xml::parse(reader);
 
     if let Err(e) = &result {
