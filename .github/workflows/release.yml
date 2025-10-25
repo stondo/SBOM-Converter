@@ -67,10 +67,19 @@ jobs:
       
       - name: Install system dependencies (Windows)
         if: matrix.os == 'windows-latest'
+        shell: pwsh
         run: |
-          vcpkg install libxml2:x64-windows-static-md
-          echo "LIBXML2_INCLUDE_DIR=$env:VCPKG_ROOT\installed\x64-windows-static-md\include" >> $env:GITHUB_ENV
-          echo "LIBXML2_LIB_DIR=$env:VCPKG_ROOT\installed\x64-windows-static-md\lib" >> $env:GITHUB_ENV
+          # Set up vcpkg
+          git clone https://github.com/microsoft/vcpkg.git C:\vcpkg
+          cd C:\vcpkg
+          .\bootstrap-vcpkg.bat
+          
+          # Set environment variables
+          echo "VCPKG_ROOT=C:\vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Append
+          echo "VCPKG_DEFAULT_TRIPLET=x64-windows" | Out-File -FilePath $env:GITHUB_ENV -Append
+          
+          # Install libxml2
+          .\vcpkg.exe install libxml2:x64-windows
       
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
