@@ -72,26 +72,18 @@ impl DiffReport {
         let mut output = String::new();
 
         // Header
-        output.push_str(&format!(
-            "═══════════════════════════════════════════════════════════\n"
-        ));
-        output.push_str(&format!("                    SBOM DIFF REPORT\n"));
-        output.push_str(&format!(
-            "═══════════════════════════════════════════════════════════\n\n"
-        ));
+        output.push_str("═══════════════════════════════════════════════════════════\n");
+        output.push_str("                    SBOM DIFF REPORT\n");
+        output.push_str("═══════════════════════════════════════════════════════════\n\n");
 
         output.push_str(&format!("Format 1: {}\n", self.format1.description()));
         output.push_str(&format!("Format 2: {}\n", self.format2.description()));
-        output.push_str(&format!("\n"));
+        output.push('\n');
 
         // Summary
-        output.push_str(&format!(
-            "───────────────────────────────────────────────────────────\n"
-        ));
-        output.push_str(&format!("  SUMMARY\n"));
-        output.push_str(&format!(
-            "───────────────────────────────────────────────────────────\n"
-        ));
+        output.push_str("───────────────────────────────────────────────────────────\n");
+        output.push_str("  SUMMARY\n");
+        output.push_str("───────────────────────────────────────────────────────────\n");
         output.push_str(&format!(
             "  Components added:      {}\n",
             self.added_components.len()
@@ -124,47 +116,35 @@ impl DiffReport {
             "  Vulnerabilities removed: {}\n",
             self.removed_vulnerabilities.len()
         ));
-        output.push_str(&format!("\n"));
+        output.push('\n');
 
         // Added components
         if !self.added_components.is_empty() {
-            output.push_str(&format!(
-                "───────────────────────────────────────────────────────────\n"
-            ));
+            output.push_str("───────────────────────────────────────────────────────────\n");
             output.push_str(&format!("  {} COMPONENTS ADDED\n", "✓".green()));
-            output.push_str(&format!(
-                "───────────────────────────────────────────────────────────\n"
-            ));
+            output.push_str("───────────────────────────────────────────────────────────\n");
             for comp in &self.added_components {
                 output.push_str(&format!("  + {}\n", format_component(comp).green()));
             }
-            output.push_str("\n");
+            output.push('\n');
         }
 
         // Removed components
         if !self.removed_components.is_empty() {
-            output.push_str(&format!(
-                "───────────────────────────────────────────────────────────\n"
-            ));
+            output.push_str("───────────────────────────────────────────────────────────\n");
             output.push_str(&format!("  {} COMPONENTS REMOVED\n", "✗".red()));
-            output.push_str(&format!(
-                "───────────────────────────────────────────────────────────\n"
-            ));
+            output.push_str("───────────────────────────────────────────────────────────\n");
             for comp in &self.removed_components {
                 output.push_str(&format!("  - {}\n", format_component(comp).red()));
             }
-            output.push_str("\n");
+            output.push('\n');
         }
 
         // Modified components
         if !self.modified_components.is_empty() {
-            output.push_str(&format!(
-                "───────────────────────────────────────────────────────────\n"
-            ));
+            output.push_str("───────────────────────────────────────────────────────────\n");
             output.push_str(&format!("  {} COMPONENTS MODIFIED\n", "~".yellow()));
-            output.push_str(&format!(
-                "───────────────────────────────────────────────────────────\n"
-            ));
+            output.push_str("───────────────────────────────────────────────────────────\n");
             for comp in &self.modified_components {
                 let comp_name = if let Some(ver) = &comp.version {
                     format!("{} ({})", comp.name, ver)
@@ -176,21 +156,17 @@ impl DiffReport {
                     output.push_str(&format!("      {}\n", change));
                 }
             }
-            output.push_str("\n");
+            output.push('\n');
         }
 
         // Common components (only if not diff_only)
         if !diff_only && !self.common_components.is_empty() {
-            output.push_str(&format!(
-                "───────────────────────────────────────────────────────────\n"
-            ));
+            output.push_str("───────────────────────────────────────────────────────────\n");
             output.push_str(&format!(
                 "  COMPONENTS UNCHANGED ({})\n",
                 self.common_components.len()
             ));
-            output.push_str(&format!(
-                "───────────────────────────────────────────────────────────\n"
-            ));
+            output.push_str("───────────────────────────────────────────────────────────\n");
             for comp in self.common_components.iter().take(10) {
                 output.push_str(&format!("  = {}\n", format_component(comp)));
             }
@@ -200,108 +176,86 @@ impl DiffReport {
                     self.common_components.len() - 10
                 ));
             }
-            output.push_str("\n");
+            output.push('\n');
         }
 
         // Dependencies
         if !self.added_dependencies.is_empty() {
-            output.push_str(&format!(
-                "───────────────────────────────────────────────────────────\n"
-            ));
+            output.push_str("───────────────────────────────────────────────────────────\n");
             output.push_str(&format!("  {} DEPENDENCIES ADDED\n", "✓".green()));
-            output.push_str(&format!(
-                "───────────────────────────────────────────────────────────\n"
-            ));
+            output.push_str("───────────────────────────────────────────────────────────\n");
             for dep in &self.added_dependencies {
                 output.push_str(
-                    &format!("  + {} → {}\n", dep.from, dep.to)
+                    format!("  + {} → {}\n", dep.from, dep.to)
                         .green()
                         .to_string()
                         .as_str(),
                 );
             }
-            output.push_str("\n");
+            output.push('\n');
         }
 
         if !self.removed_dependencies.is_empty() {
-            output.push_str(&format!(
-                "───────────────────────────────────────────────────────────\n"
-            ));
+            output.push_str("───────────────────────────────────────────────────────────\n");
             output.push_str(&format!("  {} DEPENDENCIES REMOVED\n", "✗".red()));
-            output.push_str(&format!(
-                "───────────────────────────────────────────────────────────\n"
-            ));
+            output.push_str("───────────────────────────────────────────────────────────\n");
             for dep in &self.removed_dependencies {
                 output.push_str(
-                    &format!("  - {} → {}\n", dep.from, dep.to)
+                    format!("  - {} → {}\n", dep.from, dep.to)
                         .red()
                         .to_string()
                         .as_str(),
                 );
             }
-            output.push_str("\n");
+            output.push('\n');
         }
 
         // Vulnerabilities
         if !self.added_vulnerabilities.is_empty() {
-            output.push_str(&format!(
-                "───────────────────────────────────────────────────────────\n"
-            ));
+            output.push_str("───────────────────────────────────────────────────────────\n");
             output.push_str(&format!("  {} VULNERABILITIES ADDED\n", "⚠".yellow()));
-            output.push_str(&format!(
-                "───────────────────────────────────────────────────────────\n"
-            ));
+            output.push_str("───────────────────────────────────────────────────────────\n");
             for vuln in &self.added_vulnerabilities {
                 output.push_str(
-                    &format!("  + {}\n", format_vulnerability(vuln))
+                    format!("  + {}\n", format_vulnerability(vuln))
                         .yellow()
                         .to_string()
                         .as_str(),
                 );
             }
-            output.push_str("\n");
+            output.push('\n');
         }
 
         if !self.removed_vulnerabilities.is_empty() {
-            output.push_str(&format!(
-                "───────────────────────────────────────────────────────────\n"
-            ));
+            output.push_str("───────────────────────────────────────────────────────────\n");
             output.push_str(&format!("  {} VULNERABILITIES REMOVED\n", "✓".green()));
-            output.push_str(&format!(
-                "───────────────────────────────────────────────────────────\n"
-            ));
+            output.push_str("───────────────────────────────────────────────────────────\n");
             for vuln in &self.removed_vulnerabilities {
                 output.push_str(
-                    &format!("  - {}\n", format_vulnerability(vuln))
+                    format!("  - {}\n", format_vulnerability(vuln))
                         .green()
                         .to_string()
                         .as_str(),
                 );
             }
-            output.push_str("\n");
+            output.push('\n');
         }
 
         // Metadata changes
         if !self.metadata_changes.is_empty() {
-            output.push_str(&format!(
-                "───────────────────────────────────────────────────────────\n"
-            ));
-            output.push_str(&format!("  METADATA CHANGES\n"));
-            output.push_str(&format!(
-                "───────────────────────────────────────────────────────────\n"
-            ));
+            output.push_str("───────────────────────────────────────────────────────────\n");
+            output.push_str("  METADATA CHANGES\n");
+            output.push_str("───────────────────────────────────────────────────────────\n");
             for change in &self.metadata_changes {
                 output.push_str(&format!(
                     "  {}: {} → {}\n",
                     change.field, change.old_value, change.new_value
                 ));
             }
-            output.push_str("\n");
+            output.push('\n');
         }
 
-        output.push_str(&format!(
-            "═══════════════════════════════════════════════════════════\n"
-        ));
+        output.push_str("═══════════════════════════════════════════════════════════\n");
 
         output
     }
@@ -606,15 +560,15 @@ fn extract_cdx_dependencies(value: &Value) -> Vec<DependencyInfo> {
 
     if let Some(deps) = value.get("dependencies").and_then(|d| d.as_array()) {
         for dep in deps {
-            if let Some(ref_id) = dep.get("ref").and_then(|r| r.as_str()) {
-                if let Some(depends_on) = dep.get("dependsOn").and_then(|d| d.as_array()) {
-                    for target in depends_on {
-                        if let Some(target_str) = target.as_str() {
-                            dependencies.push(DependencyInfo {
-                                from: ref_id.to_string(),
-                                to: target_str.to_string(),
-                            });
-                        }
+            if let Some(ref_id) = dep.get("ref").and_then(|r| r.as_str())
+                && let Some(depends_on) = dep.get("dependsOn").and_then(|d| d.as_array())
+            {
+                for target in depends_on {
+                    if let Some(target_str) = target.as_str() {
+                        dependencies.push(DependencyInfo {
+                            from: ref_id.to_string(),
+                            to: target_str.to_string(),
+                        });
                     }
                 }
             }
@@ -661,28 +615,26 @@ fn compare_cdx_metadata(value1: &Value, value2: &Value) -> Vec<MetadataChange> {
     if let (Some(sn1), Some(sn2)) = (
         value1.get("serialNumber").and_then(|s| s.as_str()),
         value2.get("serialNumber").and_then(|s| s.as_str()),
-    ) {
-        if sn1 != sn2 {
-            changes.push(MetadataChange {
-                field: "serialNumber".to_string(),
-                old_value: sn1.to_string(),
-                new_value: sn2.to_string(),
-            });
-        }
+    ) && sn1 != sn2
+    {
+        changes.push(MetadataChange {
+            field: "serialNumber".to_string(),
+            old_value: sn1.to_string(),
+            new_value: sn2.to_string(),
+        });
     }
 
     // Compare version
     if let (Some(v1), Some(v2)) = (
         value1.get("version").and_then(|v| v.as_u64()),
         value2.get("version").and_then(|v| v.as_u64()),
-    ) {
-        if v1 != v2 {
-            changes.push(MetadataChange {
-                field: "version".to_string(),
-                old_value: v1.to_string(),
-                new_value: v2.to_string(),
-            });
-        }
+    ) && v1 != v2
+    {
+        changes.push(MetadataChange {
+            field: "version".to_string(),
+            old_value: v1.to_string(),
+            new_value: v2.to_string(),
+        });
     }
 
     changes
@@ -696,33 +648,33 @@ fn extract_spdx_packages(value: &Value) -> Vec<ComponentInfo> {
     // SPDX 3.x structure
     if let Some(graph) = value.get("@graph").and_then(|g| g.as_array()) {
         for element in graph {
-            if let Some(elem_type) = element.get("type").and_then(|t| t.as_str()) {
-                if elem_type.contains("Package") {
-                    components.push(ComponentInfo {
-                        name: element
-                            .get("name")
-                            .and_then(|n| n.as_str())
-                            .unwrap_or("unknown")
-                            .to_string(),
-                        version: element
-                            .get("packageVersion")
-                            .and_then(|v| v.as_str())
-                            .map(|s| s.to_string()),
-                        purl: element
-                            .get("externalIdentifier")
-                            .and_then(|ei| ei.as_array())
-                            .and_then(|arr| {
-                                arr.iter().find(|e| {
-                                    e.get("externalIdentifierType").and_then(|t| t.as_str())
-                                        == Some("purl")
-                                })
+            if let Some(elem_type) = element.get("type").and_then(|t| t.as_str())
+                && elem_type.contains("Package")
+            {
+                components.push(ComponentInfo {
+                    name: element
+                        .get("name")
+                        .and_then(|n| n.as_str())
+                        .unwrap_or("unknown")
+                        .to_string(),
+                    version: element
+                        .get("packageVersion")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
+                    purl: element
+                        .get("externalIdentifier")
+                        .and_then(|ei| ei.as_array())
+                        .and_then(|arr| {
+                            arr.iter().find(|e| {
+                                e.get("externalIdentifierType").and_then(|t| t.as_str())
+                                    == Some("purl")
                             })
-                            .and_then(|e| e.get("identifier"))
-                            .and_then(|i| i.as_str())
-                            .map(|s| s.to_string()),
-                        component_type: Some("package".to_string()),
-                    });
-                }
+                        })
+                        .and_then(|e| e.get("identifier"))
+                        .and_then(|i| i.as_str())
+                        .map(|s| s.to_string()),
+                    component_type: Some("package".to_string()),
+                });
             }
         }
     }
@@ -735,23 +687,21 @@ fn extract_spdx_relationships(value: &Value) -> Vec<DependencyInfo> {
 
     if let Some(graph) = value.get("@graph").and_then(|g| g.as_array()) {
         for element in graph {
-            if let Some(elem_type) = element.get("type").and_then(|t| t.as_str()) {
-                if elem_type.contains("Relationship") {
-                    if let (Some(from), Some(to), Some(rel_type)) = (
-                        element.get("from").and_then(|f| f.as_str()),
-                        element.get("to").and_then(|t| t.as_array()),
-                        element.get("relationshipType").and_then(|r| r.as_str()),
-                    ) {
-                        if rel_type.contains("dependsOn") || rel_type.contains("DEPENDS_ON") {
-                            for target in to {
-                                if let Some(target_str) = target.as_str() {
-                                    dependencies.push(DependencyInfo {
-                                        from: from.to_string(),
-                                        to: target_str.to_string(),
-                                    });
-                                }
-                            }
-                        }
+            if let Some(elem_type) = element.get("type").and_then(|t| t.as_str())
+                && elem_type.contains("Relationship")
+                && let (Some(from), Some(to), Some(rel_type)) = (
+                    element.get("from").and_then(|f| f.as_str()),
+                    element.get("to").and_then(|t| t.as_array()),
+                    element.get("relationshipType").and_then(|r| r.as_str()),
+                )
+                && (rel_type.contains("dependsOn") || rel_type.contains("DEPENDS_ON"))
+            {
+                for target in to {
+                    if let Some(target_str) = target.as_str() {
+                        dependencies.push(DependencyInfo {
+                            from: from.to_string(),
+                            to: target_str.to_string(),
+                        });
                     }
                 }
             }
@@ -768,25 +718,24 @@ fn compare_spdx_metadata(value1: &Value, value2: &Value) -> Vec<MetadataChange> 
     if let (Some(id1), Some(id2)) = (
         value1.get("spdxId").and_then(|s| s.as_str()),
         value2.get("spdxId").and_then(|s| s.as_str()),
-    ) {
-        if id1 != id2 {
-            changes.push(MetadataChange {
-                field: "spdxId".to_string(),
-                old_value: id1.to_string(),
-                new_value: id2.to_string(),
-            });
-        }
+    ) && id1 != id2
+    {
+        changes.push(MetadataChange {
+            field: "spdxId".to_string(),
+            old_value: id1.to_string(),
+            new_value: id2.to_string(),
+        });
     }
 
     // Compare creationInfo
-    if let (Some(ci1), Some(ci2)) = (value1.get("creationInfo"), value2.get("creationInfo")) {
-        if ci1 != ci2 {
-            changes.push(MetadataChange {
-                field: "creationInfo".to_string(),
-                old_value: serde_json::to_string(ci1).unwrap_or_default(),
-                new_value: serde_json::to_string(ci2).unwrap_or_default(),
-            });
-        }
+    if let (Some(ci1), Some(ci2)) = (value1.get("creationInfo"), value2.get("creationInfo"))
+        && ci1 != ci2
+    {
+        changes.push(MetadataChange {
+            field: "creationInfo".to_string(),
+            old_value: serde_json::to_string(ci1).unwrap_or_default(),
+            new_value: serde_json::to_string(ci2).unwrap_or_default(),
+        });
     }
 
     changes

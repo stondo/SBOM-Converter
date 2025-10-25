@@ -545,6 +545,7 @@ fn validate_against_schema(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn run_convert(
     input: PathBuf,
     output: PathBuf,
@@ -609,13 +610,14 @@ fn run_merge(
 ) -> Result<(), ConverterError> {
     use sbom_converter::merge::{DedupStrategy, merge_cyclonedx_files, merge_spdx_files};
     use sbom_converter::version_detection::detect_format;
+    use std::str::FromStr;
 
     println!("🔄 Merging {} SBOM files...", inputs.len());
 
     // Determine deduplication strategy
     let dedup_strategy = dedup
         .as_deref()
-        .and_then(DedupStrategy::from_str)
+        .and_then(|s| DedupStrategy::from_str(s).ok())
         .unwrap_or_default();
 
     // Detect format from first input file
@@ -659,7 +661,7 @@ fn run_merge(
     // Write merged BOM to output file
     println!("  Writing merged SBOM to: {}", output.display());
     let output_file = std::fs::File::create(&output)
-        .map_err(|e| ConverterError::Io(e, format!("Failed to create output file")))?;
+        .map_err(|e| ConverterError::Io(e, "Failed to create output file".to_string()))?;
 
     match output_format {
         Format::Json => {
@@ -724,7 +726,7 @@ fn run_diff(
     match output {
         Some(output_path) => {
             std::fs::write(&output_path, output_content)
-                .map_err(|e| ConverterError::Io(e, format!("Failed to write output file")))?;
+                .map_err(|e| ConverterError::Io(e, "Failed to write output file".to_string()))?;
             println!("✓ Diff report written to: {}", output_path.display());
         }
         None => {

@@ -8,6 +8,7 @@ use serde_json::{Value, json};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
+use std::str::FromStr;
 
 /// Deduplication strategy for merging
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,12 +25,14 @@ impl Default for DedupStrategy {
     }
 }
 
-impl DedupStrategy {
-    pub fn from_str(s: &str) -> Option<Self> {
+impl FromStr for DedupStrategy {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
-            "first" => Some(Self::First),
-            "latest" | "last" => Some(Self::Latest),
-            _ => None,
+            "first" => Ok(Self::First),
+            "latest" | "last" => Ok(Self::Latest),
+            _ => Err(format!("Invalid dedup strategy: {}", s)),
         }
     }
 }
@@ -117,7 +120,7 @@ pub fn merge_cyclonedx_files(
 
                     merged_dependencies
                         .entry(ref_id.to_string())
-                        .or_insert_with(HashSet::new)
+                        .or_default()
                         .extend(depends_on);
                 }
             }
@@ -394,11 +397,11 @@ pub fn value_to_cdx_document(
                     obj.insert("@ref".to_string(), ref_val);
                 }
                 // Transform dependsOn array to proper structure
-                if let Some(depends_on) = obj.get_mut("dependsOn") {
-                    if let Some(arr) = depends_on.as_array() {
-                        let deps_vec: Vec<Value> = arr.iter().map(|d| json!({"@ref": d})).collect();
-                        *depends_on = json!({"dependency": deps_vec});
-                    }
+                if let Some(depends_on) = obj.get_mut("dependsOn")
+                    && let Some(arr) = depends_on.as_array()
+                {
+                    let deps_vec: Vec<Value> = arr.iter().map(|d| json!({"@ref": d})).collect();
+                    *depends_on = json!({"dependency": deps_vec});
                 }
             }
         }
@@ -524,12 +527,10 @@ mod tests {
 
     #[test]
     fn test_dedup_strategy_from_str() {
-        assert_eq!(DedupStrategy::from_str("first"), Some(DedupStrategy::First));
-        assert_eq!(
-            DedupStrategy::from_str("latest"),
-            Some(DedupStrategy::Latest)
-        );
-        assert_eq!(DedupStrategy::from_str("last"), Some(DedupStrategy::Latest));
-        assert_eq!(DedupStrategy::from_str("invalid"), None);
+        use std::str::FromStr;
+        assert_eq!(DedupStrategy::from_str("first"), Ok(DedupStrategy::First));
+        assert_eq!(DedupStrategy::from_str("latest"), Ok(DedupStrategy::Latest));
+        assert_eq!(DedupStrategy::from_str("last"), Ok(DedupStrategy::Latest));
+        assert!(DedupStrategy::from_str("invalid").is_err());
     }
 }
