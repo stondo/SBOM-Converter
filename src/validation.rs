@@ -162,8 +162,8 @@ pub struct ValidationSummary {
     pub total: usize,
 }
 
-impl ValidationReport {
-    pub fn new() -> Self {
+impl Default for ValidationReport {
+    fn default() -> Self {
         Self {
             issues: Vec::new(),
             file_path: None,
@@ -174,6 +174,12 @@ impl ValidationReport {
                 total: 0,
             },
         }
+    }
+}
+
+impl ValidationReport {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn with_file(mut self, path: impl AsRef<Path>) -> Self {

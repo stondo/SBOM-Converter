@@ -1,5 +1,7 @@
 //! CycloneDX version types and utilities
 
+use std::str::FromStr;
+
 /// CycloneDX specification version
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CdxVersion {
@@ -21,16 +23,19 @@ impl CdxVersion {
             CdxVersion::V1_7 => "1.7",
         }
     }
+}
 
-    /// Parse from string
-    pub fn from_str(s: &str) -> Option<Self> {
+impl FromStr for CdxVersion {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "1.3" => Some(CdxVersion::V1_3),
-            "1.4" => Some(CdxVersion::V1_4),
-            "1.5" => Some(CdxVersion::V1_5),
-            "1.6" => Some(CdxVersion::V1_6),
-            "1.7" => Some(CdxVersion::V1_7),
-            _ => None,
+            "1.3" => Ok(CdxVersion::V1_3),
+            "1.4" => Ok(CdxVersion::V1_4),
+            "1.5" => Ok(CdxVersion::V1_5),
+            "1.6" => Ok(CdxVersion::V1_6),
+            "1.7" => Ok(CdxVersion::V1_7),
+            _ => Err(format!("Invalid CycloneDX version: {}", s)),
         }
     }
 }

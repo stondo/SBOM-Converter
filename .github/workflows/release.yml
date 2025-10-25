@@ -39,7 +39,7 @@ jobs:
         if: startsWith(matrix.os, 'macos-')
         run: |
           brew install libxml2 pkg-config
-          echo "PKG_CONFIG_PATH=$(brew --prefix libxml2)/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=$(brew --prefix libxml2)/lib/pkgconfig" >> $GITHUB_ENV
       
       - name: Install system dependencies (Linux)
         if: matrix.os == 'ubuntu-latest'
