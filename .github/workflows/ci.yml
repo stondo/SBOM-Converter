@@ -24,7 +24,7 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: |
           brew install libxml2 pkg-config
-          echo "PKG_CONFIG_PATH=$(brew --prefix libxml2)/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=$(brew --prefix libxml2)/lib/pkgconfig" >> $GITHUB_ENV
       
       - name: Install system dependencies (Linux)
         if: matrix.os == 'ubuntu-latest'
@@ -96,12 +96,34 @@ jobs:
             target: x86_64-unknown-linux-gnu
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-          - os: macos-latest
+          - os: macos-13 # <-- Use Intel runner for x86_64
             target: x86_64-apple-darwin
-          - os: macos-latest
+          - os: macos-latest # <-- Use Apple Silicon runner for aarch64
             target: aarch64-apple-darwin
     steps:
       - uses: actions/checkout@v4
+
+      # --- ADD ALL THESE DEPENDENCY STEPS ---
+      - name: Install system dependencies (macOS)
+        if: startsWith(matrix.os, 'macos-') # Runs on macos-latest and macos-13
+        run: |
+          brew install libxml2 pkg-config
+          echo "PKG_CONFIG_PATH=$(brew --prefix libxml2)/lib/pkgconfig" >> $GITHUB_ENV
+
+      - name: Install system dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxml2-dev pkg-config
+
+      - name: Install system dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          vcpkg install libxml2:x64-windows-static-md
+          echo "VCPKGRS_DYNAMIC=1" >> $env:GITHUB_ENV
+          echo "LIBXML2_INCLUDE_DIR=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static-md\include" >> $env:GITHUB_ENV
+          echo "LIBXML2_LIB_DIR=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static-md\lib" >> $env:GITHUB_ENV
+      # --- END OF ADDED STEPS ---
       
       - name: Install system dependencies (macOS)
         if: startsWith(matrix.os, 'macos-')
@@ -127,6 +149,8 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+
+      # You might want to add your cargo cache steps here too
       
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}

@@ -117,7 +117,7 @@ fn test_cdx_to_spdx_streaming() {
     // 1. Create the input file
     let mut input_file = File::create(&input_path).unwrap();
     let cdx_data = get_test_cdx();
-    writeln!(input_file, "{}", cdx_data.to_string()).unwrap();
+    writeln!(input_file, "{}", cdx_data).unwrap();
 
     // 2. Run the converter
     let mut cmd = get_cmd();
@@ -192,7 +192,7 @@ fn test_spdx_to_cdx_streaming() {
     // 1. Create the input file
     let mut input_file = File::create(&input_path).unwrap();
     let spdx_data = get_test_spdx();
-    writeln!(input_file, "{}", spdx_data.to_string()).unwrap();
+    writeln!(input_file, "{}", spdx_data).unwrap();
 
     // 2. Run the converter
     let mut cmd = get_cmd();
@@ -241,7 +241,7 @@ fn test_validation_flag_cdx() {
         ]
     });
     let mut input_file = File::create(&input_path).unwrap();
-    writeln!(input_file, "{}", invalid_cdx.to_string()).unwrap();
+    writeln!(input_file, "{}", invalid_cdx).unwrap();
 
     let mut cmd = get_cmd();
     cmd.arg("--input")
@@ -304,7 +304,7 @@ fn test_packages_only_and_jsonld_format() {
     });
 
     let mut input_file = File::create(&input_path).unwrap();
-    writeln!(input_file, "{}", simple_spdx.to_string()).unwrap();
+    writeln!(input_file, "{}", simple_spdx).unwrap();
 
     // Test that --packages-only flag doesn't crash
     let mut cmd = get_cmd();
@@ -324,7 +324,7 @@ fn test_packages_only_and_jsonld_format() {
     let components = output_json["components"].as_array().unwrap();
 
     // Should have at least 1 component
-    assert!(components.len() >= 1);
+    assert!(!components.is_empty());
 }
 
 #[test]
@@ -378,7 +378,7 @@ fn test_split_vex_flag() {
     });
 
     let mut input_file = File::create(&input_path).unwrap();
-    writeln!(input_file, "{}", spdx_with_vulns.to_string()).unwrap();
+    writeln!(input_file, "{}", spdx_with_vulns).unwrap();
 
     // Run with --split-vex flag (SPDX->CDX direction)
     let mut cmd = get_cmd();
@@ -398,7 +398,7 @@ fn test_split_vex_flag() {
     let components = output_json["components"].as_array().unwrap();
 
     // Should have at least 1 package
-    assert!(components.len() >= 1);
+    assert!(!components.is_empty());
     assert_eq!(components[0]["name"], "Vulnerable Package");
 
     // VEX file should exist if vulnerabilities were split
@@ -438,7 +438,7 @@ fn test_jsonld_format_parsing() {
     });
 
     let mut input_file = File::create(&input_path).unwrap();
-    writeln!(input_file, "{}", spdx_jsonld.to_string()).unwrap();
+    writeln!(input_file, "{}", spdx_jsonld).unwrap();
 
     // Run converter on JSON-LD format
     let mut cmd = get_cmd();
@@ -502,7 +502,7 @@ fn test_metadata_preservation_round_trip() {
     });
 
     let mut input_file = File::create(&input_cdx_path).unwrap();
-    writeln!(input_file, "{}", cdx_with_metadata.to_string()).unwrap();
+    writeln!(input_file, "{}", cdx_with_metadata).unwrap();
 
     // Step 1: CDX -> SPDX
     let mut cmd1 = get_cmd();

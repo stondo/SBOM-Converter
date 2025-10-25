@@ -128,21 +128,19 @@ pub fn json_to_document(value: &Value) -> Result<CdxDocument, String> {
         if let Some(tools_array) = metadata.get("tools").and_then(|v| v.as_array()) {
             let tools: Vec<CdxTool> = tools_array
                 .iter()
-                .filter_map(|t| {
-                    Some(CdxTool {
-                        vendor: t
-                            .get("vendor")
-                            .and_then(|v| v.as_str())
-                            .map(|s| s.to_string()),
-                        name: t
-                            .get("name")
-                            .and_then(|v| v.as_str())
-                            .map(|s| s.to_string()),
-                        version: t
-                            .get("version")
-                            .and_then(|v| v.as_str())
-                            .map(|s| s.to_string()),
-                    })
+                .map(|t| CdxTool {
+                    vendor: t
+                        .get("vendor")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
+                    name: t
+                        .get("name")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
+                    version: t
+                        .get("version")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
                 })
                 .collect();
 
