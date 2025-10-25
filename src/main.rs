@@ -165,6 +165,29 @@ enum Command {
         )]
         dedup: Option<String>,
     },
+
+    /// Compare two SBOM files and show differences
+    Diff {
+        #[arg(long, value_name = "FILE")]
+        file1: PathBuf,
+
+        #[arg(long, value_name = "FILE")]
+        file2: PathBuf,
+
+        #[arg(
+            long,
+            value_enum,
+            help = "Output format for diff report",
+            default_value = "text"
+        )]
+        output_format: OutputFormat,
+
+        #[arg(long, value_name = "FILE", help = "Write diff report to file")]
+        output: Option<PathBuf>,
+
+        #[arg(long, help = "Show only differences, hide common elements")]
+        diff_only: bool,
+    },
 }
 
 #[derive(Debug, Clone, ValueEnum)]
@@ -658,6 +681,43 @@ fn run_merge(
     Ok(())
 }
 
+fn run_diff(
+    file1: PathBuf,
+    file2: PathBuf,
+    output_format: OutputFormat,
+    output: Option<PathBuf>,
+    diff_only: bool,
+) -> Result<(), ConverterError> {
+    use sbom_converter::diff::diff_sboms;
+
+    println!("🔍 Comparing SBOM files...");
+    println!("  File 1: {}", file1.display());
+    println!("  File 2: {}", file2.display());
+
+    // Perform the diff
+    let diff_report = diff_sboms(&file1, &file2)?;
+
+    // Generate output based on format
+    let output_content = match output_format {
+        OutputFormat::Text => diff_report.format_text(diff_only),
+        OutputFormat::Json => diff_report.format_json()?,
+    };
+
+    // Write to file or stdout
+    match output {
+        Some(output_path) => {
+            std::fs::write(&output_path, output_content)
+                .map_err(|e| ConverterError::Io(e, format!("Failed to write output file")))?;
+            println!("✓ Diff report written to: {}", output_path.display());
+        }
+        None => {
+            println!("\n{}", output_content);
+        }
+    }
+
+    Ok(())
+}
+
 fn run_app() -> Result<(), ConverterError> {
     let cli = Cli::parse();
 
@@ -707,6 +767,13 @@ fn run_app() -> Result<(), ConverterError> {
             output_type,
             dedup,
         }) => run_merge(inputs, output, output_format, output_type, dedup),
+        Some(Command::Diff {
+            file1,
+            file2,
+            output_format,
+            output,
+            diff_only,
+        }) => run_diff(file1, file2, output_format, output, diff_only),
         None => {
             // Legacy mode: no subcommand, use old flags
             if let (Some(input), Some(output), Some(direction)) =
