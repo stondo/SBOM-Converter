@@ -380,6 +380,111 @@ sbom-converter merge \
 - Minimum 2 input files required
 - Currently supports JSON output only (XML coming soon)
 
+### Diff Command
+
+Compare two SBOM files and generate a detailed report of differences. The diff command shows added, removed, and modified components, dependencies, and vulnerabilities.
+
+```bash
+sbom-converter diff --file1 <FILE> --file2 <FILE> [OPTIONS]
+```
+
+#### Diff Options
+
+| Option | Description |
+|--------|-------------|
+| `--file1 <FILE>` | First SBOM file to compare (required) |
+| `--file2 <FILE>` | Second SBOM file to compare (required) |
+| `--report-format <FORMAT>` | Output format: `text` (default) or `json` |
+| `--output <FILE>` | Write diff report to file (prints to stdout if not specified) |
+| `--diff-only` | Show only differences, hide unchanged components |
+
+#### Diff Examples
+
+**Basic comparison (text output):**
+
+```bash
+sbom-converter diff \
+  --file1 old-sbom.json \
+  --file2 new-sbom.json
+```
+
+**JSON output for programmatic processing:**
+
+```bash
+sbom-converter diff \
+  --file1 baseline.json \
+  --file2 current.json \
+  --report-format json \
+  --output diff-report.json
+```
+
+**Show only differences:**
+
+```bash
+sbom-converter diff \
+  --file1 v1.0-sbom.json \
+  --file2 v2.0-sbom.json \
+  --diff-only
+```
+
+#### Diff Report Sections
+
+The diff report includes the following sections:
+
+**Summary:**
+
+- Count of added, removed, modified, and unchanged components
+- Dependencies added/removed
+- Vulnerabilities added/removed
+
+**Components:**
+
+- ✅ **Added:** New components in file2 not in file1
+- ✗ **Removed:** Components in file1 not in file2
+- ~ **Modified:** Components present in both but with changes (version, type, etc.)
+- = **Unchanged:** Identical components (shown unless `--diff-only` is used)
+
+**Dependencies:**
+
+- Added/removed dependency relationships between components
+
+**Vulnerabilities (CycloneDX):**
+
+- Added/removed security vulnerabilities
+
+**Metadata:**
+
+- Changes to document-level metadata (serial number, version, etc.)
+
+#### Diff Behavior
+
+**Component Identification:**
+
+Components are matched using the same priority as merge:
+
+1. **purl** (Package URL) - highest priority
+2. **bom-ref** (CycloneDX) or **spdxId** (SPDX) - fallback
+3. **name + version** - final fallback
+
+**Format Requirements:**
+
+- Both files must be the same SBOM format (both CycloneDX or both SPDX)
+- Comparing different formats will fail with an error
+- Supports both CycloneDX and SPDX 3.0.1 (JSON and JSON-LD)
+
+**Output Formats:**
+
+- **Text:** Human-readable colored output with clear sections
+- **JSON:** Structured data for automated processing and CI/CD integration
+
+**Use Cases:**
+
+- Track component changes between software versions
+- Verify SBOM updates after dependency upgrades
+- Audit supply chain changes in CI/CD pipelines
+- Compare production vs. development SBOMs
+- Validate merge operations
+
 ## Schema Validation
 
 The tool supports optional JSON schema validation using the `--validate` flag. The schema files are bundled with the tool:
