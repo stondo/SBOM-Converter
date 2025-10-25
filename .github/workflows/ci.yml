@@ -36,8 +36,8 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           vcpkg install libxml2:x64-windows-static-md
-          echo "LIBXML2_INCLUDE_DIR=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static-md\include" >> $env:GITHUB_ENV
-          echo "LIBXML2_LIB_DIR=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static-md\lib" >> $env:GITHUB_ENV
+          echo "LIBXML2_INCLUDE_DIR=$env:VCPKG_ROOT\installed\x64-windows-static-md\include" >> $env:GITHUB_ENV
+          echo "LIBXML2_LIB_DIR=$env:VCPKG_ROOT\installed\x64-windows-static-md\lib" >> $env:GITHUB_ENV
       
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -119,8 +119,8 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           vcpkg install libxml2:x64-windows-static-md
-          echo "LIBXML2_INCLUDE_DIR=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static-md\include" >> $env:GITHUB_ENV
-          echo "LIBXML2_LIB_DIR=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static-md\lib" >> $env:GITHUB_ENV
+          echo "LIBXML2_INCLUDE_DIR=$env:VCPKG_ROOT\installed\x64-windows-static-md\include" >> $env:GITHUB_ENV
+          echo "LIBXML2_LIB_DIR=$env:VCPKG_ROOT\installed\x64-windows-static-md\lib" >> $env:GITHUB_ENV
       # --- END OF ADDED STEPS ---
       
       - name: Install system dependencies (macOS)
@@ -139,8 +139,8 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           vcpkg install libxml2:x64-windows-static-md
-          echo "LIBXML2_INCLUDE_DIR=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static-md\include" >> $env:GITHUB_ENV
-          echo "LIBXML2_LIB_DIR=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static-md\lib" >> $env:GITHUB_ENV
+          echo "LIBXML2_INCLUDE_DIR=$env:VCPKG_ROOT\installed\x64-windows-static-md\include" >> $env:GITHUB_ENV
+          echo "LIBXML2_LIB_DIR=$env:VCPKG_ROOT\installed\x64-windows-static-md\lib" >> $env:GITHUB_ENV
       
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
