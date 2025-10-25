@@ -481,7 +481,7 @@ fn run_convert(
     direction: CliDirection,
     input_format: Option<CliFormat>,
     output_format: Option<CliFormat>,
-    verbose: bool,
+    _verbose: bool,
     validate: bool,
     split_vex: bool,
     packages_only: bool,
