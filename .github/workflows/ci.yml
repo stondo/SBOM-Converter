@@ -103,6 +103,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      - name: Install system dependencies (macOS)
+        if: startsWith(matrix.os, 'macos-')
+        run: |
+          brew install libxml2 pkg-config
+          echo "PKG_CONFIG_PATH=$(brew --prefix libxml2)/lib/pkgconfig" >> $GITHUB_ENV
+      
+      - name: Install system dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxml2-dev pkg-config
+      
+      - name: Install system dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          vcpkg install libxml2:x64-windows-static-md
+          echo "VCPKGRS_DYNAMIC=1" >> $env:GITHUB_ENV
+          echo "LIBXML2_INCLUDE_DIR=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static-md\include" >> $env:GITHUB_ENV
+          echo "LIBXML2_LIB_DIR=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static-md\lib" >> $env:GITHUB_ENV
+      
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
