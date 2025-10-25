@@ -4,6 +4,7 @@
 //! Pass 2: Stream `elements` array, writing `components` and `vulnerabilities`
 //!         one-by-one. Then, use the index to write `dependencies`.
 
+use crate::cdx_version::CdxVersion;
 use crate::errors::ConverterError;
 use crate::models_cdx as cdx;
 use crate::models_spdx as spdx;
@@ -36,9 +37,11 @@ pub fn convert_spdx_to_cdx<R: Read, W: Write>(
     progress: ProgressTracker,
     packages_only: bool,
     split_vex: bool,
+    output_version: CdxVersion,
 ) -> Result<(), ConverterError> {
     // --- PASS 1: Build Index ---
     info!("[PASS 1/2] Building relationship index...");
+    info!("  Target CycloneDX version: {}", output_version.as_str());
     let start_pass_1 = std::time::Instant::now();
 
     // We must consume the input_reader to build the index.
@@ -67,6 +70,7 @@ pub fn convert_spdx_to_cdx<R: Read, W: Write>(
         progress.clone(),
         packages_only,
         split_vex,
+        output_version,
     )?;
 
     info!(
@@ -98,7 +102,13 @@ pub fn convert_spdx_to_cdx<R: Read, W: Write>(
         })?;
         let mut vex_writer = BufWriter::new(vex_file);
 
-        pass_3_extract_vulnerabilities(input_reader_pass_3, &mut vex_writer, &serial_number, true)?;
+        pass_3_extract_vulnerabilities(
+            input_reader_pass_3,
+            &mut vex_writer,
+            &serial_number,
+            true,
+            output_version,
+        )?;
     } else {
         // Write vulnerabilities to main file
         pass_3_extract_vulnerabilities(
@@ -106,6 +116,7 @@ pub fn convert_spdx_to_cdx<R: Read, W: Write>(
             &mut output_writer,
             &serial_number,
             false,
+            output_version,
         )?;
     }
 
@@ -136,7 +147,7 @@ fn pass_1_build_index<R: Read>(
 }
 
 /// Pass 2: Streams the input file again, converts, and writes components/dependencies.
-/// Returns the serial_number for use in Pass 3 (vulnerability URN references).
+/// Returns the serial number for use in Pass 3.
 fn pass_2_convert_and_write<R: Read, W: Write>(
     input_reader: BufReader<R>,
     writer: &mut BufWriter<W>,
@@ -144,12 +155,14 @@ fn pass_2_convert_and_write<R: Read, W: Write>(
     progress: ProgressTracker,
     packages_only: bool,
     split_vex: bool,
+    output_version: CdxVersion,
 ) -> Result<String, ConverterError> {
     // --- Write CDX Header ---
     let serial_number = format!("urn:uuid:{}", Uuid::new_v4());
     writer.write_all(b"{\n")?;
     writer.write_all(b"  \"bomFormat\": \"CycloneDX\",\n")?;
-    writer.write_all(b"  \"specVersion\": \"1.6\",\n")?;
+    writer
+        .write_all(format!("  \"specVersion\": \"{}\",\n", output_version.as_str()).as_bytes())?;
     writer.write_all(format!("  \"serialNumber\": \"{}\",\n", serial_number).as_bytes())?;
     writer.write_all(b"  \"version\": 1,\n")?;
 
@@ -242,12 +255,15 @@ fn pass_3_extract_vulnerabilities<R: Read, W: Write>(
     writer: &mut BufWriter<W>,
     serial_number: &str,
     separate_file: bool,
+    output_version: CdxVersion,
 ) -> Result<(), ConverterError> {
     if separate_file {
         // Write complete VEX document structure
         writer.write_all(b"{\n")?;
         writer.write_all(b"  \"bomFormat\": \"CycloneDX\",\n")?;
-        writer.write_all(b"  \"specVersion\": \"1.6\",\n")?;
+        writer.write_all(
+            format!("  \"specVersion\": \"{}\",\n", output_version.as_str()).as_bytes(),
+        )?;
         writer.write_all(format!("  \"serialNumber\": \"{}\",\n", serial_number).as_bytes())?;
         writer.write_all(b"  \"version\": 1,\n")?;
 

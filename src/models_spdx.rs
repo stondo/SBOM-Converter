@@ -297,7 +297,7 @@ impl JsonLdElement {
 // --- Full Serialization Structs (for writing) ---
 
 /// Top-level SPDX Document (minimal)
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct SpdxDocument {
     pub spdx_version: String,
@@ -325,7 +325,7 @@ impl SpdxDocument {
     }
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct SpdxCreationInfo {
     pub created: String, // ISO 8601
@@ -333,7 +333,7 @@ pub struct SpdxCreationInfo {
 }
 
 /// Represents an SPDX Package (element)
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct SpdxPackage {
     #[serde(rename = "spdxId")]
