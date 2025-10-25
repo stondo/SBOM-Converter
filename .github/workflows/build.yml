@@ -1,0 +1,60 @@
+#build.yml
+name: Build
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    name: Build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os: macos-13 # <-- Use Intel runner for x86_64
+            target: x86_64-apple-darwin
+          - os: macos-latest # <-- Use Apple Silicon runner for aarch64
+            target: aarch64-apple-darwin
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies (macOS)
+        if: startsWith(matrix.os, 'macos-')
+        run: |
+          brew install libxml2 pkg-config
+          echo "PKG_CONFIG_PATH=$(brew --prefix libxml2)/lib/pkgconfig" >> $GITHUB_ENV
+
+      - name: Install system dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxml2-dev pkg-config
+
+      - name: Install system dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          # Clone, bootstrap, and install libxml2 via vcpkg
+          git clone https://github.com/microsoft/vcpkg.git C:\vcpkg
+          C:\vcpkg\bootstrap-vcpkg.bat
+          C:\vcpkg\vcpkg.exe install libxml2:x64-windows
+          # Integrate vcpkg with the user-wide environment for better discovery
+          C:\vcpkg\vcpkg.exe integrate install
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      
+      - name: Build
+        # Set VCPKG_ROOT directly on this step for maximum reliability.
+        env:
+          VCPKG_ROOT: C:\vcpkg
+        run: cargo build --release --target ${{ matrix.target }}
