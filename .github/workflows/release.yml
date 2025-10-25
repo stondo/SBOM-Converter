@@ -9,31 +9,8 @@ permissions:
   contents: write
 
 jobs:
-  create-release:
-    name: Create Release
-    runs-on: ubuntu-latest
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-      version: ${{ steps.get_version.outputs.version }}
-    steps:
-      - name: Get version from tag
-        id: get_version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-      
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
-
   build-release:
     name: Build Release
-    needs: create-release
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -52,6 +29,11 @@ jobs:
             asset_name: sbom-converter-macos-aarch64
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Get version
+        id: get_version
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
       
       - name: Install system dependencies (macOS)
         if: startsWith(matrix.os, 'macos-')
@@ -88,6 +70,7 @@ jobs:
       
       - name: Strip binary (Linux and macOS)
         if: matrix.os != 'windows-latest'
+        shell: bash
         run: |
           if [[ "${{ matrix.os }}" == macos-* ]]; then
             strip target/release/sbom-converter
@@ -97,6 +80,7 @@ jobs:
       
       - name: Copy binary (Unix)
         if: matrix.os != 'windows-latest'
+        shell: bash
         run: |
           if [[ "${{ matrix.os }}" == macos-* ]]; then
             cp target/release/sbom-converter ${{ matrix.asset_name }}
@@ -110,30 +94,18 @@ jobs:
       
       - name: Create archive (Unix)
         if: matrix.os != 'windows-latest'
-        run: tar czf ${{ matrix.asset_name }}-v${{ needs.create-release.outputs.version }}.tar.gz ${{ matrix.asset_name }} README.md LICENSE-MIT LICENSE-APACHE
+        shell: bash
+        run: tar czf ${{ matrix.asset_name }}-v${{ steps.get_version.outputs.VERSION }}.tar.gz ${{ matrix.asset_name }} README.md LICENSE-MIT LICENSE-APACHE
       
       - name: Create archive (Windows)
         if: matrix.os == 'windows-latest'
-        run: 7z a ${{ matrix.asset_name }}-v${{ needs.create-release.outputs.version }}.zip ${{ matrix.asset_name }} README.md LICENSE-MIT LICENSE-APACHE
+        run: 7z a ${{ matrix.asset_name }}-v${{ steps.get_version.outputs.VERSION }}.zip ${{ matrix.asset_name }} README.md LICENSE-MIT LICENSE-APACHE
       
-      - name: Upload Release Asset (Unix)
-        if: matrix.os != 'windows-latest'
-        uses: actions/upload-release-asset@v1
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ${{ matrix.asset_name }}-v${{ steps.get_version.outputs.VERSION }}.tar.gz
+            ${{ matrix.asset_name }}-v${{ steps.get_version.outputs.VERSION }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./${{ matrix.asset_name }}-v${{ needs.create-release.outputs.version }}.tar.gz
-          asset_name: ${{ matrix.asset_name }}-v${{ needs.create-release.outputs.version }}.tar.gz
-          asset_content_type: application/gzip
-      
-      - name: Upload Release Asset (Windows)
-        if: matrix.os == 'windows-latest'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./${{ matrix.asset_name }}-v${{ needs.create-release.outputs.version }}.zip
-          asset_name: ${{ matrix.asset_name }}-v${{ needs.create-release.outputs.version }}.zip
-          asset_content_type: application/zip
