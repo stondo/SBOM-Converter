@@ -581,10 +581,47 @@ fn run_merge(
     inputs: Vec<PathBuf>,
     output: PathBuf,
     output_format: Option<CliFormat>,
-    output_type: Option<CliFormat>,
-    _dedup: Option<String>,
+    _output_type: Option<CliFormat>,
+    dedup: Option<String>,
 ) -> Result<(), ConverterError> {
+    use sbom_converter::merge::{DedupStrategy, merge_cyclonedx_files, merge_spdx_files};
+    use sbom_converter::version_detection::detect_format;
+
     println!("🔄 Merging {} SBOM files...", inputs.len());
+
+    // Determine deduplication strategy
+    let dedup_strategy = dedup
+        .as_deref()
+        .and_then(DedupStrategy::from_str)
+        .unwrap_or_default();
+
+    // Detect format from first input file
+    let first_file_content = std::fs::read_to_string(&inputs[0]).map_err(|e| {
+        ConverterError::Io(e, format!("Failed to read file: {}", inputs[0].display()))
+    })?;
+
+    let first_value: serde_json::Value = serde_json::from_str(&first_file_content)
+        .map_err(|e| ConverterError::ParseError(format!("Invalid JSON: {}", e)))?;
+
+    let detected_format = detect_format(&first_value);
+    println!("  Detected format: {}", detected_format.description());
+
+    // Merge based on detected format
+    let merged_bom = match detected_format {
+        sbom_converter::version_detection::SbomFormat::CycloneDx(_) => {
+            println!("  Merging CycloneDX SBOMs...");
+            merge_cyclonedx_files(&inputs, dedup_strategy)?
+        }
+        sbom_converter::version_detection::SbomFormat::Spdx(_) => {
+            println!("  Merging SPDX SBOMs...");
+            merge_spdx_files(&inputs, dedup_strategy)?
+        }
+        _ => {
+            return Err(ConverterError::ParseError(
+                "Unable to detect SBOM format from input files".to_string(),
+            ));
+        }
+    };
 
     // Detect output format from file extension if not specified
     let output_format = match output_format {
@@ -596,19 +633,29 @@ fn run_merge(
         None => Format::from_extension(&output).unwrap_or(Format::Json),
     };
 
-    // TODO: Implement actual merge logic
-    // For now, just a placeholder
-    println!("  Input files:");
-    for input in &inputs {
-        println!("    - {}", input.display());
-    }
-    println!("  Output file: {}", output.display());
-    println!("  Output format: {:?}", output_format);
-    println!("  Output type: {:?}", output_type);
+    // Write merged BOM to output file
+    println!("  Writing merged SBOM to: {}", output.display());
+    let output_file = std::fs::File::create(&output)
+        .map_err(|e| ConverterError::Io(e, format!("Failed to create output file")))?;
 
-    Err(ConverterError::ParseError(
-        "Merge command not yet implemented".to_string(),
-    ))
+    match output_format {
+        Format::Json => {
+            serde_json::to_writer_pretty(output_file, &merged_bom).map_err(|e| {
+                ConverterError::SerializationError(format!("Failed to write JSON: {}", e))
+            })?;
+        }
+        Format::Xml => {
+            // For now, XML output is not supported for merge
+            return Err(ConverterError::ParseError(
+                "XML output format not yet supported for merge command".to_string(),
+            ));
+        }
+    }
+
+    println!("✓ Successfully merged {} files", inputs.len());
+    println!("  Deduplication strategy: {:?}", dedup_strategy);
+
+    Ok(())
 }
 
 fn run_app() -> Result<(), ConverterError> {

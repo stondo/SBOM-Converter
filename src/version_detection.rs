@@ -59,6 +59,15 @@ impl SbomFormat {
             _ => None,
         }
     }
+
+    /// Get a human-readable description with name and version
+    pub fn description(&self) -> String {
+        match self {
+            SbomFormat::CycloneDx(v) => format!("CycloneDX {}", v),
+            SbomFormat::Spdx(v) => format!("SPDX {}", v),
+            SbomFormat::Unknown => "Unknown format".to_string(),
+        }
+    }
 }
 
 /// Detect the SBOM format and version from JSON content

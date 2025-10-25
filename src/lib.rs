@@ -9,6 +9,7 @@ pub mod converter_cdx_to_spdx;
 pub mod converter_spdx_to_cdx;
 pub mod errors;
 pub mod formats;
+pub mod merge;
 pub mod models_cdx;
 pub mod models_spdx;
 pub mod progress;
