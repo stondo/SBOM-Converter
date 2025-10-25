@@ -118,11 +118,11 @@ pub fn detect_format(value: &Value) -> SbomFormat {
     // Check for SPDX 2.x
     if value.get("SPDXID").is_some() {
         // Try to get version from other fields
-        if let Some(creation_info) = value.get("creationInfo") {
-            if let Some(created) = creation_info.get("created") {
-                let _ = created; // Just checking existence
-                return SbomFormat::Spdx("2.3".to_string());
-            }
+        if let Some(creation_info) = value.get("creationInfo")
+            && let Some(created) = creation_info.get("created")
+        {
+            let _ = created; // Just checking existence
+            return SbomFormat::Spdx("2.3".to_string());
         }
         return SbomFormat::Spdx("2.x".to_string());
     }
