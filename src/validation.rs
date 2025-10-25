@@ -443,7 +443,7 @@ fn validate_cdx_component(comp: &Value, idx: usize, report: &mut ValidationRepor
             if !valid_types.contains(&type_str) {
                 report.add_issue(
                     ValidationIssue::warning(format!("Uncommon component type: '{}'", type_str))
-                        .with_location(&format!("{}.type", location))
+                        .with_location(format!("{}.type", location))
                         .with_suggestion(format!("Valid types: {}", valid_types.join(", "))),
                 );
             }
@@ -462,13 +462,13 @@ fn validate_cdx_component(comp: &Value, idx: usize, report: &mut ValidationRepor
             if name_str.trim().is_empty() {
                 report.add_issue(
                     ValidationIssue::error("Component name cannot be empty")
-                        .with_location(&format!("{}.name", location)),
+                        .with_location(format!("{}.name", location)),
                 );
             }
         } else {
             report.add_issue(
                 ValidationIssue::error("Component name must be a string")
-                    .with_location(&format!("{}.name", location)),
+                    .with_location(format!("{}.name", location)),
             );
         }
     } else {
@@ -516,14 +516,14 @@ pub fn validate_spdx(value: &Value) -> ValidationReport {
 
     // Check for SPDX version
     if let Some(spdx_version) = obj.get("spdxVersion") {
-        if let Some(version) = spdx_version.as_str() {
-            if !version.starts_with("SPDX-") {
-                report.add_issue(
-                    ValidationIssue::error(format!("Invalid spdxVersion format: '{}'", version))
-                        .with_location("spdxVersion")
-                        .with_suggestion("Use format like 'SPDX-3.0'"),
-                );
-            }
+        if let Some(version) = spdx_version.as_str()
+            && !version.starts_with("SPDX-")
+        {
+            report.add_issue(
+                ValidationIssue::error(format!("Invalid spdxVersion format: '{}'", version))
+                    .with_location("spdxVersion")
+                    .with_suggestion("Use format like 'SPDX-3.0'"),
+            );
         }
     } else {
         report.add_issue(
